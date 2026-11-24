@@ -19,7 +19,9 @@ public class StripePatternTest {
     @Test public void periodIsTwiceTheWidth() {
         assertEquals(2, StripePattern.period(1));
         assertEquals(4, StripePattern.period(2));
-        assertEquals(2, StripePattern.period(99)); // anything but 2 is treated as 1
+        assertEquals(10, StripePattern.period(5));
+        assertEquals(20, StripePattern.period(10));
+        assertEquals(2, StripePattern.period(0)); // below 1 is treated as 1
     }
 
     @Test public void width1AtOffset0IsTheCheckerboard() {
@@ -39,8 +41,16 @@ public class StripePatternTest {
         assertEquals(Color.WHITE, StripePattern.color(1, 1, 2, 0f));
     }
 
+    @Test public void width5BandsAlongXPlusY() {
+        assertEquals(Color.BLACK, StripePattern.color(0, 0, 5, 0f));
+        assertEquals(Color.BLACK, StripePattern.color(4, 0, 5, 0f));
+        assertEquals(Color.WHITE, StripePattern.color(5, 0, 5, 0f));
+        assertEquals(Color.WHITE, StripePattern.color(9, 0, 5, 0f));
+        assertEquals(Color.BLACK, StripePattern.color(10, 0, 5, 0f));
+    }
+
     @Test public void onlyBlackAndWhite() {
-        for (int w : new int[]{1, 2}) {
+        for (int w = 1; w <= 10; w++) {
             for (int o = 0; o < StripePattern.period(w); o++) {
                 for (int y = 0; y < 8; y++) {
                     for (int x = 0; x < 8; x++) {
@@ -79,7 +89,7 @@ public class StripePatternTest {
     }
 
     @Test public void tileMatchesColorAtOffset0() {
-        for (int w : new int[]{1, 2}) {
+        for (int w = 1; w <= 10; w++) {
             Bitmap tile = StripePattern.tile(w);
             assertEquals(Bitmap.DENSITY_NONE, tile.getDensity());
             assertEquals(StripePattern.period(w), tile.getWidth());

@@ -15,8 +15,8 @@ import android.widget.TextView;
 
 /** Launch screen: remember settings, then open the full-screen stripes. */
 public final class SettingsActivity extends Activity {
-    private TextView speedValue, brightValue;
-    private SeekBar speedBar, brightBar;
+    private TextView speedValue, widthValue, brightValue;
+    private SeekBar speedBar, widthBar, brightBar;
     private CheckBox systemBright;
 
     @Override protected void onCreate(Bundle b) {
@@ -69,11 +69,18 @@ public final class SettingsActivity extends Activity {
         speedValue.setText(getString(R.string.speed_value, Prefs.speed(this)));
 
         heading(col, R.string.stripe_width);
-        col.addView(radios(
-                new String[]{getString(R.string.width_1), getString(R.string.width_2)},
-                new int[]{1, 2},
-                Prefs.width(this),
-                v -> Prefs.setWidth(this, v)));
+        widthValue = text("", 14, Ui.DIM);
+        col.addView(widthValue);
+        widthBar = seek(Prefs.WIDTH_MAX - Prefs.WIDTH_MIN, Prefs.width(this) - Prefs.WIDTH_MIN);
+        col.addView(widthBar, lp());
+        widthBar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                int v = p + Prefs.WIDTH_MIN;
+                if (fromUser) Prefs.setWidth(SettingsActivity.this, v);
+                widthValue.setText(getString(R.string.width_value, v));
+            }
+        });
+        widthValue.setText(getString(R.string.width_value, Prefs.width(this)));
 
         heading(col, R.string.direction);
         col.addView(radios(

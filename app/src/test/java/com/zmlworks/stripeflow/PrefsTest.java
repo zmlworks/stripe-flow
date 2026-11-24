@@ -35,12 +35,12 @@ public class PrefsTest {
 
     @Test public void roundTrip() {
         Prefs.setSpeed(c, 7);
-        Prefs.setWidth(c, 2);
+        Prefs.setWidth(c, 7);
         Prefs.setDirection(c, Prefs.DIR_UP_LEFT);
         Prefs.setUseSystemBrightness(c, false);
         Prefs.setBrightness(c, 0.4f);
         assertEquals(7, Prefs.speed(c));
-        assertEquals(2, Prefs.width(c));
+        assertEquals(7, Prefs.width(c));
         assertEquals(Prefs.DIR_UP_LEFT, Prefs.direction(c));
         assertFalse(Prefs.useSystemBrightness(c));
         assertEquals(0.4f, Prefs.brightness(c), 0.0001f);
@@ -52,8 +52,13 @@ public class PrefsTest {
         assertEquals(Prefs.SPEED_MIN, Prefs.speed(c));
         Prefs.setSpeed(c, 99);
         assertEquals(Prefs.SPEED_MAX, Prefs.speed(c));
-        Prefs.setWidth(c, 7);
-        assertEquals(1, Prefs.width(c));
+        Prefs.setWidth(c, 0);
+        assertEquals(Prefs.WIDTH_MIN, Prefs.width(c));
+        Prefs.setWidth(c, 99);
+        assertEquals(Prefs.WIDTH_MAX, Prefs.width(c));
+        // Values stored by v0.1.0 (1 or 2) remain valid with no migration.
+        Prefs.sp(c).edit().putInt(Prefs.WIDTH, 2).commit();
+        assertEquals(2, Prefs.width(c));
         Prefs.setBrightness(c, -0.5f);
         assertEquals(0f, Prefs.brightness(c), 0f);
         Prefs.setBrightness(c, 1.5f);

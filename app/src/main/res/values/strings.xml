@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">流れ縞</string>
-    <string name="subtitle">画面全体に、1画素の黒と白の斜め縞をゆっくり流します</string>
+    <string name="subtitle">画面全体に、黒と白の斜め縞をゆっくり流します</string>
     <string name="brightness">画面の明るさ</string>
     <string name="brightness_system">端末の明るさに合わせる</string>
     <string name="brightness_value">%d%%</string>
     <string name="speed">速さ</string>
     <string name="speed_value">%d px/秒</string>
     <string name="stripe_width">縞の幅</string>
-    <string name="width_1">1 px</string>
-    <string name="width_2">2 px</string>
+    <string name="width_value">%d px</string>
     <string name="direction">流れの向き</string>
     <string name="dir_down_right">右下へ</string>
     <string name="dir_up_left">左上へ</string>

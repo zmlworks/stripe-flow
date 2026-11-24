@@ -15,7 +15,7 @@ final class Prefs {
     static final String BRIGHT = "brightness";
 
     static final int SPEED_MIN = 1, SPEED_MAX = 30, SPEED_DEFAULT = 3;
-    static final int WIDTH_DEFAULT = 1;
+    static final int WIDTH_MIN = 1, WIDTH_MAX = 10, WIDTH_DEFAULT = 1;
     /** +1 = toward top-left, -1 = toward bottom-right (the default). */
     static final int DIR_DOWN_RIGHT = -1, DIR_UP_LEFT = 1, DIR_DEFAULT = DIR_DOWN_RIGHT;
     static final float BRIGHT_DEFAULT = 1f;
@@ -32,14 +32,13 @@ final class Prefs {
         sp(c).edit().putInt(SPEED, clamp(v, SPEED_MIN, SPEED_MAX)).apply();
     }
 
-    /** Stripe thickness in physical pixels: 1 or 2. */
+    /** Stripe thickness in physical pixels: 1..10. Stored 1 or 2 from older versions stay valid. */
     static int width(Context c) {
-        int w = sp(c).getInt(WIDTH, WIDTH_DEFAULT);
-        return w == 2 ? 2 : 1;
+        return clamp(sp(c).getInt(WIDTH, WIDTH_DEFAULT), WIDTH_MIN, WIDTH_MAX);
     }
 
     static void setWidth(Context c, int v) {
-        sp(c).edit().putInt(WIDTH, v == 2 ? 2 : 1).apply();
+        sp(c).edit().putInt(WIDTH, clamp(v, WIDTH_MIN, WIDTH_MAX)).apply();
     }
 
     static int direction(Context c) {

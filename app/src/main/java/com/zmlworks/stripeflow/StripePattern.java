@@ -4,9 +4,10 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 
 /**
- * 45-degree 1-device-pixel (or 2) black/white diagonal stripes.
+ * 45-degree black/white diagonal stripes of a chosen device-pixel width.
  * Colour of pixel (x, y) is decided by floor((x + y + offset) / width) modulo 2,
  * point-sampled so every pixel is pure black or pure white.
+ * The repeating period along the x+y axis is 2 * width, so the loop is seamless.
  */
 final class StripePattern {
     private StripePattern() {}
@@ -14,9 +15,13 @@ final class StripePattern {
     static final int BLACK = Color.BLACK;
     static final int WHITE = Color.WHITE;
 
+    static int normWidth(int width) {
+        return width < 1 ? 1 : width;
+    }
+
     /** Period of the pattern along the x+y axis, in physical pixels. */
     static int period(int width) {
-        return 2 * (width == 2 ? 2 : 1);
+        return 2 * normWidth(width);
     }
 
     /**
@@ -34,14 +39,14 @@ final class StripePattern {
 
     /** Pure black or white at integer pixel (x, y) for a given sub-pixel offset. */
     static int color(int x, int y, int width, float offset) {
-        int w = width == 2 ? 2 : 1;
+        int w = normWidth(width);
         int band = (int) Math.floor((x + y + offset) / (double) w);
         return (band & 1) == 0 ? BLACK : WHITE;
     }
 
     /** A repeating tile of the pattern at offset 0. Density is none, so 1 bitmap pixel = 1 device pixel. */
     static Bitmap tile(int width) {
-        int w = width == 2 ? 2 : 1;
+        int w = normWidth(width);
         int n = period(w);
         Bitmap b = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888);
         b.setDensity(Bitmap.DENSITY_NONE);

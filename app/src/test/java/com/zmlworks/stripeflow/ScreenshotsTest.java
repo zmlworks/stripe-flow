@@ -99,6 +99,16 @@ public class ScreenshotsTest {
         assertEquals(Color.WHITE, bmp.getPixel(2, 0));
         assertEquals(Color.WHITE, bmp.getPixel(3, 0));
         save(bmp, "stripes-width2.png");
+
+        v.apply(10, 3f, Prefs.DIR_DOWN_RIGHT);
+        v.setOffset(0f);
+        Bitmap w10 = drawView(v);
+        assertOnlyBlackAndWhite(w10);
+        assertEquals(Color.BLACK, w10.getPixel(0, 0));
+        assertEquals(Color.BLACK, w10.getPixel(9, 0));
+        assertEquals(Color.WHITE, w10.getPixel(10, 0));
+        assertEquals(Color.WHITE, w10.getPixel(19, 0));
+        save(w10, "stripes-width10.png");
     }
 
     static Bitmap drawActivity(Activity a) {

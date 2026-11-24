@@ -36,7 +36,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     }
 
     void apply(int width, float speedPxPerSec, int direction) {
-        this.stripeWidth = width == 2 ? 2 : 1;
+        this.stripeWidth = Prefs.clamp(width, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
         this.speed = speedPxPerSec;
         this.direction = direction >= 0 ? 1 : -1;
         if (tile != null) tile.recycle();
