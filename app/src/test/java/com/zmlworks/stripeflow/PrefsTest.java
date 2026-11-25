@@ -36,6 +36,7 @@ public class PrefsTest {
         assertEquals(Prefs.ROT_CW, Prefs.rotateDir(c));
         assertFalse(Prefs.wander(c));
         assertFalse(Prefs.autoDrift(c));
+        assertEquals(8, Prefs.autoWidth(c));
     }
 
     @Test public void roundTrip() {
@@ -49,6 +50,7 @@ public class PrefsTest {
         Prefs.setRotateDir(c, Prefs.ROT_CCW);
         Prefs.setWander(c, true);
         Prefs.setAutoDrift(c, true);
+        Prefs.setAutoWidth(c, 24);
         assertEquals(7, Prefs.speed(c));
         assertEquals(40, Prefs.width(c));
         assertEquals(Prefs.DIR_UP_LEFT, Prefs.direction(c));
@@ -59,6 +61,7 @@ public class PrefsTest {
         assertEquals(Prefs.ROT_CCW, Prefs.rotateDir(c));
         assertTrue(Prefs.wander(c));
         assertTrue(Prefs.autoDrift(c));
+        assertEquals(24, Prefs.autoWidth(c));
     }
 
     @Test public void clampsInvalidValuesAndKeepsOldWidths() {
@@ -85,6 +88,10 @@ public class PrefsTest {
         assertEquals(0f, Prefs.rotateSpeed(c), 0f);
         Prefs.setRotateSpeed(c, 180f);
         assertEquals(90f, Prefs.rotateSpeed(c), 0f);
+        Prefs.setAutoWidth(c, 0);
+        assertEquals(Prefs.WIDTH_MIN, Prefs.autoWidth(c));
+        Prefs.setAutoWidth(c, 99);
+        assertEquals(Prefs.WIDTH_MAX, Prefs.autoWidth(c));
         Prefs.sp(c).edit().putInt(Prefs.SPEED, -3).putInt(Prefs.WIDTH, 0).putFloat(Prefs.BRIGHT, 9f).commit();
         assertEquals(Prefs.SPEED_MIN, Prefs.speed(c));
         assertEquals(1, Prefs.width(c));
@@ -99,5 +106,6 @@ public class PrefsTest {
         Prefs.setAutoDrift(c, false);
         assertEquals(12, Prefs.width(c));
         assertFalse(Prefs.autoDrift(c));
+        assertEquals(8, Prefs.autoWidth(c));
     }
 }

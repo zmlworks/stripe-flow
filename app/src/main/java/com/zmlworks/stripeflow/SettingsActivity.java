@@ -70,6 +70,25 @@ public final class SettingsActivity extends Activity {
         autoHint.setPadding(0, Ui.dp(this, 8), 0, 0);
         col.addView(autoHint);
 
+        LinearLayout widthPanel = new LinearLayout(this);
+        widthPanel.setOrientation(LinearLayout.VERTICAL);
+        heading(widthPanel, R.string.stripe_width);
+        widthValue = text("", 14, Ui.DIM);
+        widthPanel.addView(widthValue);
+        widthBar = seek(Prefs.WIDTH_MAX - Prefs.WIDTH_MIN, 0);
+        widthPanel.addView(widthBar, lp());
+        widthBar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                int v = p + Prefs.WIDTH_MIN;
+                if (fromUser) {
+                    if (autoDrift.isChecked()) Prefs.setAutoWidth(SettingsActivity.this, v);
+                    else Prefs.setWidth(SettingsActivity.this, v);
+                }
+                widthValue.setText(getString(R.string.width_value, v));
+            }
+        });
+        col.addView(widthPanel, lp());
+
         manualPanel = new LinearLayout(this);
         manualPanel.setOrientation(LinearLayout.VERTICAL);
         col.addView(manualPanel, lp());
@@ -87,20 +106,6 @@ public final class SettingsActivity extends Activity {
             }
         });
         speedValue.setText(getString(R.string.speed_value, Prefs.speed(this)));
-
-        heading(manualPanel, R.string.stripe_width);
-        widthValue = text("", 14, Ui.DIM);
-        manualPanel.addView(widthValue);
-        widthBar = seek(Prefs.WIDTH_MAX - Prefs.WIDTH_MIN, Prefs.width(this) - Prefs.WIDTH_MIN);
-        manualPanel.addView(widthBar, lp());
-        widthBar.setOnSeekBarChangeListener(new SimpleSeek() {
-            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
-                int v = p + Prefs.WIDTH_MIN;
-                if (fromUser) Prefs.setWidth(SettingsActivity.this, v);
-                widthValue.setText(getString(R.string.width_value, v));
-            }
-        });
-        widthValue.setText(getString(R.string.width_value, Prefs.width(this)));
 
         heading(manualPanel, R.string.direction);
         manualPanel.addView(radios(
@@ -200,6 +205,13 @@ public final class SettingsActivity extends Activity {
         boolean on = autoDrift.isChecked();
         autoHint.setVisibility(on ? View.VISIBLE : View.GONE);
         manualPanel.setVisibility(on ? View.GONE : View.VISIBLE);
+        bindWidth();
+    }
+
+    private void bindWidth() {
+        int w = autoDrift.isChecked() ? Prefs.autoWidth(this) : Prefs.width(this);
+        widthBar.setProgress(w - Prefs.WIDTH_MIN);
+        widthValue.setText(getString(R.string.width_value, w));
     }
 
     private String rotLabel(float degPerSec) {

@@ -18,9 +18,10 @@ final class Prefs {
     static final String ROT_DIR = "rotate_dir";
     static final String WANDER = "wander_pivot";
     static final String AUTO = "auto_drift";
+    static final String AUTO_WIDTH = "auto_stripe_width";
 
     static final int SPEED_MIN = 0, SPEED_MAX = 300, SPEED_DEFAULT = 3;
-    static final int WIDTH_MIN = 1, WIDTH_MAX = 64, WIDTH_DEFAULT = 1;
+    static final int WIDTH_MIN = 1, WIDTH_MAX = 64, WIDTH_DEFAULT = 1, AUTO_WIDTH_DEFAULT = 8;
     /** +1 = against the normal, -1 = along the normal (down-right at the starting 45°). */
     static final int DIR_DOWN_RIGHT = -1, DIR_UP_LEFT = 1, DIR_DEFAULT = DIR_DOWN_RIGHT;
     static final float BRIGHT_DEFAULT = 1f;
@@ -120,6 +121,15 @@ final class Prefs {
 
     static void setAutoDrift(Context c, boolean v) {
         sp(c).edit().putBoolean(AUTO, v).apply();
+    }
+
+    /** Stripe width used in auto-drift mode. Default 8; independent of the manual width. */
+    static int autoWidth(Context c) {
+        return clamp(sp(c).getInt(AUTO_WIDTH, AUTO_WIDTH_DEFAULT), WIDTH_MIN, WIDTH_MAX);
+    }
+
+    static void setAutoWidth(Context c, int v) {
+        sp(c).edit().putInt(AUTO_WIDTH, clamp(v, WIDTH_MIN, WIDTH_MAX)).apply();
     }
 
     static int clamp(int v, int lo, int hi) {

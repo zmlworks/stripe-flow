@@ -39,6 +39,11 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     private float pivotComp;
     private float offset;
     private float angle = StripePattern.BASE_ANGLE_RAD;
+    private float autoT;
+    private float autoFlowOff;
+    private float autoAng = StripePattern.BASE_ANGLE_RAD;
+    private boolean autoInited;
+    private static final float AUTO_DT = 1f / 60f;
 
     public StripeView(Context c) {
         super(c);
@@ -51,7 +56,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     void applyPrefs(Context c) {
         boolean auto = Prefs.autoDrift(c);
         if (auto) {
-            configure(SmoothDrift.WIDTH, 0f, Prefs.DIR_DEFAULT,
+            configure(Prefs.autoWidth(c), 0f, Prefs.DIR_DEFAULT,
                     true, 0f, Prefs.ROT_CW, true, System.nanoTime(), true);
         } else {
             configure(Prefs.width(c), Prefs.speed(c), Prefs.direction(c),
@@ -64,8 +69,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
                    boolean rotate, float rotDegPerSec, int rotDir,
                    boolean wander, long wanderSeed, boolean auto) {
         this.auto = auto;
-        this.stripeWidth = auto ? SmoothDrift.WIDTH
-                : Prefs.clamp(width, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
+        this.stripeWidth = Prefs.clamp(width, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
         this.speed = speedPxPerSec;
         this.direction = direction >= 0 ? 1 : -1;
         this.rotate = rotate || auto;
@@ -79,6 +83,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         paint.setShader(shader);
         havePivot = false;
         pivotComp = 0f;
+        resetAutoMotion();
         applyPose(this.angle, Float.NaN, Float.NaN, this.offset);
     }
 
@@ -106,9 +111,9 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         float ang;
         float flowOff;
         if (auto) {
-            ang = StripePattern.BASE_ANGLE_RAD
-                    + (float) Math.toRadians(SmoothDrift.rotIntegral(t, wanderSeed));
-            flowOff = SmoothDrift.flowIntegral(t, wanderSeed);
+            advanceAuto(t);
+            ang = autoAng;
+            flowOff = autoFlowOff;
             PivotWander.position(t, vw, vh, wanderSeed, pivot);
         } else {
             ang = StripePattern.BASE_ANGLE_RAD;
@@ -145,6 +150,28 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     float pivotX() { return pivot[0]; }
     float pivotY() { return pivot[1]; }
 
+    private void resetAutoMotion() {
+        autoT = 0f;
+        autoFlowOff = 0f;
+        autoAng = StripePattern.BASE_ANGLE_RAD;
+        autoInited = true;
+    }
+
+    /** Mid-point Euler from the last time up to {@code t}, in 1/60 s steps. */
+    private void advanceAuto(float t) {
+        if (!autoInited || t < autoT) resetAutoMotion();
+        while (t - autoT > AUTO_DT) stepAuto(AUTO_DT);
+        float rem = t - autoT;
+        if (rem > 0f) stepAuto(rem);
+    }
+
+    private void stepAuto(float dt) {
+        float mid = autoT + 0.5f * dt;
+        autoFlowOff += SmoothDrift.flowSpeed(mid, wanderSeed) * dt;
+        autoAng += (float) Math.toRadians(SmoothDrift.rotSpeed(mid, wanderSeed)) * dt;
+        autoT += dt;
+    }
+
     private void applyPose(float angleRad, float px, float py, float offsetPx) {
         int vw = getWidth(), vh = getHeight();
         if (Float.isNaN(px)) px = (vw > 0 ? vw : 1) / 2f;
@@ -174,6 +201,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
             startNanos = System.nanoTime();
             havePivot = false;
             pivotComp = 0f;
+            resetAutoMotion();
             if (liveFrames()) Choreographer.getInstance().postFrameCallback(this);
         } else {
             Choreographer.getInstance().removeFrameCallback(this);

@@ -23,7 +23,7 @@
     <string name="wander">回転の軸を動かす</string>
     <string name="wander_hint">軸は画面の中央付近から、画面の中をゆっくり動きます</string>
     <string name="auto_drift">ゆっくりランダムに変化</string>
-    <string name="auto_hint">縞の幅は 8 px です。速さは -20 から 20 px/秒、回転は -5 から 5 °/秒の範囲で、軸も含めて数十秒かけて変わります。</string>
+    <string name="auto_hint">速さは -20 から 20 px/秒、回転は -5 から 5 °/秒の範囲で、ゼロ付近はすばやく通り、外側寄りを長めに、軸も含めて数十秒かけて変わります。</string>
     <string name="start">開始</string>
     <string name="touch_hint">全画面表示中に画面をタッチすると、この設定に戻ります</string>
 </resources>
