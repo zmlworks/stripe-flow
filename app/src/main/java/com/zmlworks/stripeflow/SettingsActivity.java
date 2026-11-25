@@ -3,6 +3,7 @@ package com.zmlworks.stripeflow;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -13,11 +14,14 @@ import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import java.util.Locale;
+
 /** Launch screen: remember settings, then open the full-screen stripes. */
 public final class SettingsActivity extends Activity {
-    private TextView speedValue, widthValue, brightValue;
-    private SeekBar speedBar, widthBar, brightBar;
-    private CheckBox systemBright;
+    private TextView speedValue, widthValue, brightValue, rotSpeedValue;
+    private SeekBar speedBar, widthBar, brightBar, rotSpeedBar;
+    private CheckBox systemBright, rotate, wander;
+    private LinearLayout rotPanel;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -57,11 +61,11 @@ public final class SettingsActivity extends Activity {
         heading(col, R.string.speed);
         speedValue = text("", 14, Ui.DIM);
         col.addView(speedValue);
-        speedBar = seek(Prefs.SPEED_MAX - Prefs.SPEED_MIN, Prefs.speed(this) - Prefs.SPEED_MIN);
+        speedBar = seek(Scales.STEPS, Scales.progressFromSpeed(Prefs.speed(this)));
         col.addView(speedBar, lp());
         speedBar.setOnSeekBarChangeListener(new SimpleSeek() {
             @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
-                int v = p + Prefs.SPEED_MIN;
+                int v = Scales.speedFromProgress(p);
                 if (fromUser) Prefs.setSpeed(SettingsActivity.this, v);
                 speedValue.setText(getString(R.string.speed_value, v));
             }
@@ -88,6 +92,58 @@ public final class SettingsActivity extends Activity {
                 new int[]{Prefs.DIR_DOWN_RIGHT, Prefs.DIR_UP_LEFT},
                 Prefs.direction(this),
                 v -> Prefs.setDirection(this, v)));
+        TextView dirHint = text(getString(R.string.dir_hint), 13, Ui.DIM);
+        dirHint.setPadding(0, Ui.dp(this, 4), 0, 0);
+        col.addView(dirHint);
+
+        rotate = new CheckBox(this);
+        rotate.setText(R.string.rotate);
+        rotate.setTextColor(Ui.TEXT);
+        rotate.setChecked(Prefs.rotate(this));
+        LinearLayout.LayoutParams rotLp = lp();
+        rotLp.topMargin = Ui.dp(this, 16);
+        col.addView(rotate, rotLp);
+
+        rotPanel = new LinearLayout(this);
+        rotPanel.setOrientation(LinearLayout.VERTICAL);
+        heading(rotPanel, R.string.rotate_speed);
+        rotSpeedValue = text("", 14, Ui.DIM);
+        rotPanel.addView(rotSpeedValue);
+        rotSpeedBar = seek(Scales.STEPS, Scales.progressFromRot(Prefs.rotateSpeed(this)));
+        rotPanel.addView(rotSpeedBar, lp());
+        rotSpeedBar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                float v = Scales.rotFromProgress(p);
+                if (fromUser) Prefs.setRotateSpeed(SettingsActivity.this, v);
+                rotSpeedValue.setText(rotLabel(v));
+            }
+        });
+        rotSpeedValue.setText(rotLabel(Prefs.rotateSpeed(this)));
+
+        heading(rotPanel, R.string.rotate_dir);
+        rotPanel.addView(radios(
+                new String[]{getString(R.string.rotate_cw), getString(R.string.rotate_ccw)},
+                new int[]{Prefs.ROT_CW, Prefs.ROT_CCW},
+                Prefs.rotateDir(this),
+                v -> Prefs.setRotateDir(this, v)));
+
+        wander = new CheckBox(this);
+        wander.setText(R.string.wander);
+        wander.setTextColor(Ui.TEXT);
+        wander.setChecked(Prefs.wander(this));
+        LinearLayout.LayoutParams wandLp = lp();
+        wandLp.topMargin = Ui.dp(this, 12);
+        rotPanel.addView(wander, wandLp);
+        wander.setOnCheckedChangeListener((v, on) -> Prefs.setWander(this, on));
+        TextView wanderHint = text(getString(R.string.wander_hint), 13, Ui.DIM);
+        wanderHint.setPadding(0, Ui.dp(this, 4), 0, 0);
+        rotPanel.addView(wanderHint);
+        col.addView(rotPanel, lp());
+
+        rotate.setOnCheckedChangeListener((v, on) -> {
+            Prefs.setRotate(this, on);
+            refreshRotate();
+        });
 
         Button start = new Button(this);
         start.setText(R.string.start);
@@ -106,12 +162,30 @@ public final class SettingsActivity extends Activity {
         setContentView(sv);
         Ui.edgeToEdge(this, sv);
         refreshBrightness();
+        refreshRotate();
     }
 
     private void refreshBrightness() {
         boolean sys = systemBright.isChecked();
         brightBar.setEnabled(!sys);
         brightValue.setText(sys ? "" : getString(R.string.brightness_value, brightBar.getProgress()));
+    }
+
+    private void refreshRotate() {
+        rotPanel.setVisibility(rotate.isChecked() ? View.VISIBLE : View.GONE);
+    }
+
+    private String rotLabel(float degPerSec) {
+        if (degPerSec <= 0f) return getString(R.string.rotate_speed_sec, "0");
+        if (degPerSec < 1f) {
+            return getString(R.string.rotate_speed_min, formatNum(degPerSec * 60f));
+        }
+        return getString(R.string.rotate_speed_sec, formatNum(degPerSec));
+    }
+
+    private static String formatNum(float v) {
+        if (Math.abs(v - Math.round(v)) < 0.05f) return String.format(Locale.US, "%d", Math.round(v));
+        return String.format(Locale.US, "%.1f", v);
     }
 
     private TextView text(String s, int size, int color) {
@@ -138,17 +212,20 @@ public final class SettingsActivity extends Activity {
     private RadioGroup radios(String[] labels, int[] values, int current, IntChoice onPick) {
         RadioGroup g = new RadioGroup(this);
         g.setOrientation(RadioGroup.HORIZONTAL);
+        int[] ids = new int[labels.length];
         for (int i = 0; i < labels.length; i++) {
             RadioButton rb = new RadioButton(this);
             rb.setText(labels[i]);
             rb.setTextColor(Ui.TEXT);
-            rb.setId(i + 1);
+            ids[i] = View.generateViewId();
+            rb.setId(ids[i]);
             g.addView(rb);
             if (values[i] == current) rb.setChecked(true);
         }
         g.setOnCheckedChangeListener((gr, id) -> {
-            int i = id - 1;
-            if (i >= 0 && i < values.length) onPick.pick(values[i]);
+            for (int i = 0; i < ids.length; i++) {
+                if (ids[i] == id) { onPick.pick(values[i]); break; }
+            }
         });
         return g;
     }
