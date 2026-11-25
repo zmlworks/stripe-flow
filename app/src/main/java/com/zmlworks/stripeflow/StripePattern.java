@@ -15,9 +15,7 @@ final class StripePattern {
 
     static final int BLACK = Color.BLACK;
     static final int WHITE = Color.WHITE;
-    static final int GREEN = 0xFF00FF00;
-    static final int MAGENTA = 0xFFFF00FF;
-    static final int SCHEME_BW = 0, SCHEME_GM = 1;
+    static final int SCHEME_BW = 0, SCHEME_COLOR = 1;
     /** Starting angle: stripes like ＼, normal toward the bottom-right (y down). */
     static final float BASE_ANGLE_RAD = (float) (Math.PI / 4.0);
 
@@ -47,32 +45,38 @@ final class StripePattern {
         return (float) ((x - px) * c + (y - py) * s + offset);
     }
 
-    static int dark(int scheme) {
-        return scheme == SCHEME_GM ? GREEN : BLACK;
+    static float wrapHue(float hueDeg) {
+        float h = hueDeg % 360f;
+        if (h < 0f) h += 360f;
+        return h;
     }
 
-    static int light(int scheme) {
-        return scheme == SCHEME_GM ? MAGENTA : WHITE;
+    static float complementHue(float hueDeg) {
+        return wrapHue(hueDeg + 180f);
+    }
+
+    /** Pure HSV colour (S = V = 1) at {@code hueDeg}. Reuses {@code hsv} of length 3. */
+    static int colorAtHue(float hueDeg, float[] hsv) {
+        hsv[0] = wrapHue(hueDeg);
+        hsv[1] = 1f;
+        hsv[2] = 1f;
+        return Color.HSVToColor(hsv);
+    }
+
+    static int colorAtHue(float hueDeg) {
+        return colorAtHue(hueDeg, new float[3]);
     }
 
     static int colorFromPhase(float phase, int width) {
-        return colorFromPhase(phase, width, SCHEME_BW);
-    }
-
-    static int colorFromPhase(float phase, int width, int scheme) {
         int w = normWidth(width);
         // A sub-pixel bias absorbs -eps from sin/cos of 90°, which would
         // otherwise floor a nearly-zero phase (e.g. x * cos(90°)) to -1.
         int band = (int) Math.floor((phase + 1e-3) / (double) w);
-        return (band & 1) == 0 ? dark(scheme) : light(scheme);
+        return (band & 1) == 0 ? BLACK : WHITE;
     }
 
     static int color(float x, float y, float px, float py, float angleRad, float offset, int width) {
-        return color(x, y, px, py, angleRad, offset, width, SCHEME_BW);
-    }
-
-    static int color(float x, float y, float px, float py, float angleRad, float offset, int width, int scheme) {
-        return colorFromPhase(phase(x, y, px, py, angleRad, offset), width, scheme);
+        return colorFromPhase(phase(x, y, px, py, angleRad, offset), width);
     }
 
     /**
@@ -90,17 +94,13 @@ final class StripePattern {
      * so 1 bitmap pixel = 1 device pixel along the normal.
      */
     static Bitmap tile(int width) {
-        return tile(width, SCHEME_BW);
-    }
-
-    static Bitmap tile(int width, int scheme) {
         int w = normWidth(width);
         int n = period(w);
         Bitmap b = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888);
         b.setDensity(Bitmap.DENSITY_NONE);
         for (int y = 0; y < n; y++) {
             for (int x = 0; x < n; x++) {
-                b.setPixel(x, y, colorFromPhase(x, w, scheme));
+                b.setPixel(x, y, colorFromPhase(x, w));
             }
         }
         return b;
@@ -108,14 +108,10 @@ final class StripePattern {
 
     /** Fill {@code dest} by point-sampling. Used by tests and previews. */
     static void render(Bitmap dest, int width, float px, float py, float angleRad, float offset) {
-        render(dest, width, px, py, angleRad, offset, SCHEME_BW);
-    }
-
-    static void render(Bitmap dest, int width, float px, float py, float angleRad, float offset, int scheme) {
         int w = dest.getWidth(), h = dest.getHeight();
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-                dest.setPixel(x, y, color(x, y, px, py, angleRad, offset, width, scheme));
+                dest.setPixel(x, y, color(x, y, px, py, angleRad, offset, width));
             }
         }
     }

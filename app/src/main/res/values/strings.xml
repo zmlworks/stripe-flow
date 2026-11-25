@@ -23,10 +23,16 @@
     <string name="wander">回転の軸を動かす</string>
     <string name="wander_hint">軸は画面の中央付近から、画面の中をゆっくり動きます</string>
     <string name="auto_drift">ゆっくりランダムに変化</string>
-    <string name="auto_hint">速さは -20 から 20 px/秒、回転は -5 から 5 °/秒の範囲で、ゼロ付近はすばやく通り、外側寄りを長めに、軸も含めて数十秒かけて変わります。</string>
+    <string name="auto_hint">速さ %1$s〜%2$s px/秒、回転 %3$s〜%4$s °/秒の範囲で、ゼロ付近はすばやく通り、外側寄りを長めに、軸も含めて数十秒かけて変わります。</string>
     <string name="color">色</string>
     <string name="color_bw">白黒</string>
-    <string name="color_gm">緑とマゼンタ</string>
+    <string name="color_mode">色モード</string>
+    <string name="dist_scale">変化の大きさ</string>
+    <string name="dist_scale_value">%s×</string>
+    <string name="hue_rate">色の変化の速さ</string>
+    <string name="hue_rate_fixed">固定</string>
+    <string name="hue_rate_cycle_min">%s 分で一周</string>
+    <string name="hue_rate_cycle_sec">%s 秒で一周</string>
     <string name="start">開始</string>
     <string name="touch_hint">全画面表示中に画面をタッチすると、この設定に戻ります</string>
 </resources>

@@ -173,24 +173,22 @@ public class StripePatternTest {
         for (int i = 0; i < n; i++) assertEquals("i=" + i, pa[i], pb[i]);
     }
 
-    @Test public void greenMagentaUsesPureColours() {
-        assertEquals(0xFF00FF00, StripePattern.GREEN);
-        assertEquals(0xFFFF00FF, StripePattern.MAGENTA);
-        assertEquals(StripePattern.GREEN, StripePattern.colorFromPhase(0f, 8, StripePattern.SCHEME_GM));
-        assertEquals(StripePattern.MAGENTA, StripePattern.colorFromPhase(8f, 8, StripePattern.SCHEME_GM));
-        int[] px = new int[16 * 16];
-        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(16, 16, android.graphics.Bitmap.Config.ARGB_8888);
-        StripePattern.render(bmp, 4, 0, 0, 0f, 0f, StripePattern.SCHEME_GM);
-        bmp.getPixels(px, 0, 16, 0, 0, 16, 16);
-        int green = 0, magenta = 0;
-        for (int c : px) {
-            assertTrue(c == StripePattern.GREEN || c == StripePattern.MAGENTA);
-            if (c == StripePattern.GREEN) green++;
-            else magenta++;
+    @Test public void complementaryHuesAreExactly180ApartAndPure() {
+        float[] hsv = new float[3], hsvC = new float[3];
+        float[] samples = {0f, 17f, 60f, 120f, 179.5f, 200f, 300f, 359.2f, -40f, 720f};
+        for (float h : samples) {
+            int c0 = StripePattern.colorAtHue(h, hsv);
+            int c1 = StripePattern.colorAtHue(h + 180f, hsvC);
+            android.graphics.Color.colorToHSV(c0, hsv);
+            android.graphics.Color.colorToHSV(c1, hsvC);
+            assertEquals(1f, hsv[1], 0.001f);
+            assertEquals(1f, hsv[2], 0.001f);
+            assertEquals(1f, hsvC[1], 0.001f);
+            assertEquals(1f, hsvC[2], 0.001f);
+            float d = Math.abs(StripePattern.wrapHue(hsv[0]) - StripePattern.wrapHue(hsvC[0]));
+            d = Math.min(d, 360f - d);
+            assertEquals("h=" + h, 180f, d, 0.5f);
+            assertEquals(StripePattern.wrapHue(h + 180f), StripePattern.complementHue(h), 0.001f);
         }
-        assertTrue(green > 0 && magenta > 0);
-        // Default scheme stays black/white.
-        assertEquals(Color.BLACK, StripePattern.colorFromPhase(0f, 8));
-        assertEquals(Color.WHITE, StripePattern.colorFromPhase(8f, 8));
     }
 }

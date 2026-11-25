@@ -66,6 +66,18 @@ public class ScreenshotsTest {
         Prefs.sp(app).edit().clear().commit();
     }
 
+    @Test public void settingsScreenColorMode() throws Exception {
+        android.content.Context app = RuntimeEnvironment.getApplication();
+        Prefs.sp(app).edit().clear().commit();
+        Prefs.setColorScheme(app, Prefs.COLOR_MODE);
+        Prefs.setHueRate(app, Prefs.HUE_RATE_DEFAULT);
+        Activity a = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        Bitmap bmp = drawActivity(a);
+        assertTrue(countColor(bmp, Ui.TEXT) > 100);
+        save(bmp, "settings-color.png");
+        Prefs.sp(app).edit().clear().commit();
+    }
+
     @Test public void stripeViewMatchesPointSamplingAndRotatesWithoutJumping() throws Exception {
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
         v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false, StripePattern.SCHEME_BW);
@@ -161,32 +173,87 @@ public class ScreenshotsTest {
         assertTrue("pattern should move over 90 s; changed=" + changed, changed > 1000);
     }
 
-    @Test public void greenMagentaStripeFrame() throws Exception {
+    @Test public void colorModeStripeFrame() throws Exception {
         int s = 256;
+        long seed = 7L;
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
-        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false,
-                StripePattern.SCHEME_GM);
+        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, seed, false,
+                StripePattern.SCHEME_COLOR, 1f, 0f);
         v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
         v.layout(0, 0, s, s);
-        float cx = s / 2f, cy = s / 2f;
-        float a0 = StripePattern.BASE_ANGLE_RAD;
-        v.setState(a0, cx, cy, 0f);
+        v.setElapsedNanos(0L);
         Bitmap bmp = drawView(v);
-        assertEquals(StripePattern.color(cx, cy, cx, cy, a0, 0f, 8, StripePattern.SCHEME_GM),
-                bmp.getPixel(s / 2, s / 2));
         int[] px = new int[s * s];
         bmp.getPixels(px, 0, s, 0, 0, s, s);
-        int green = 0, magenta = 0;
+        int c0 = 0, c1 = 0, n0 = 0, n1 = 0;
         for (int c : px) {
-            assertTrue("unexpected pixel " + Integer.toHexString(c),
-                    c == StripePattern.GREEN || c == StripePattern.MAGENTA);
-            if (c == StripePattern.GREEN) green++;
-            else magenta++;
+            if (n0 == 0) { c0 = c; n0++; }
+            else if (c == c0) n0++;
+            else if (n1 == 0) { c1 = c; n1++; }
+            else if (c == c1) n1++;
+            else throw new AssertionError("third colour " + Integer.toHexString(c));
         }
-        assertTrue(green > 1000 && magenta > 1000);
-        save(bmp, "stripes-45-w8-gm.png");
-        save(crop(bmp, 0, 0, 64, 64), "stripes-45-w8-gm-detail.png");
+        assertTrue(n0 > 1000 && n1 > 1000);
+        float[] h0 = new float[3], h1 = new float[3];
+        android.graphics.Color.colorToHSV(c0, h0);
+        android.graphics.Color.colorToHSV(c1, h1);
+        assertEquals(1f, h0[1], 0.01f);
+        assertEquals(1f, h0[2], 0.01f);
+        assertEquals(1f, h1[1], 0.01f);
+        assertEquals(1f, h1[2], 0.01f);
+        float d = Math.abs(h0[0] - h1[0]);
+        d = Math.min(d, 360f - d);
+        assertEquals(180f, d, 0.5f);
+        save(bmp, "stripes-45-w8-color.png");
+        save(crop(bmp, 0, 0, 64, 64), "stripes-45-w8-color-detail.png");
+    }
+
+    /** Time-lapse of a full hue cycle at the default 2 °/s (180 s in 45 frames). */
+    @Test public void colorDriftFrames() throws Exception {
+        File frameDir = new File(DIR, "color-frames");
+        if (!frameDir.exists() && !frameDir.mkdirs()) throw new IOException("mkdir frames");
+        int s = 320;
+        long seed = 7L;
+        float rate = HueDrift.RATE_DEFAULT;
+        float span = 360f / rate;
+        StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
+        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, seed, false,
+                StripePattern.SCHEME_COLOR, 1f, rate);
+        v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, s, s);
+        int frames = 45;
+        int hz = 30;
+        int steps = Math.round(span * hz);
+        int i = 0;
+        v.setElapsedNanos(0L);
+        Integer first = null, last = null;
+        for (int k = 0; k < frames; k++) {
+            int target = Math.round(k * steps / (float) (frames - 1));
+            while (i < target) {
+                i++;
+                v.setElapsedNanos((long) (i / (float) hz * 1_000_000_000f));
+            }
+            Bitmap bmp = drawView(v);
+            int mid = bmp.getPixel(s / 2, s / 2);
+            if (k == 0) first = mid;
+            if (k == frames - 1) last = mid;
+            save(bmp, String.format(Locale.US, "color-frames/frame-%03d.png", k));
+        }
+        if (first == null || last == null) throw new AssertionError("missing frames");
+        // After a full unwrapped cycle the pair has moved; the mid pixel may
+        // coincide, so compare a handful of pixels.
+        v.setElapsedNanos(0L);
+        Bitmap a = drawView(v);
+        v.setElapsedNanos((long) (span * 1_000_000_000f));
+        Bitmap b = drawView(v);
+        int changed = 0;
+        int[] pa = new int[s * s], pb = new int[s * s];
+        a.getPixels(pa, 0, s, 0, 0, s, s);
+        b.getPixels(pb, 0, s, 0, 0, s, s);
+        for (int j = 0; j < pa.length; j++) if (pa[j] != pb[j]) changed++;
+        assertTrue("colour should wander over a cycle; changed=" + changed, changed > 1000);
     }
 
     static Bitmap drawActivity(Activity a) {

@@ -121,4 +121,18 @@ public class SmoothDriftTest {
         assertTrue("rot after " + afterRot, afterRot > 0.10f && afterRot < 0.16f);
         assertTrue("rot after should be clearly thinner", afterRot < 0.5f * beforeRot);
     }
+
+    @Test public void scaledSpeedsStayInsideTheScaledRanges() {
+        float[] scales = {Prefs.DIST_MIN, 1f, 2.5f, Prefs.DIST_MAX};
+        long seed = 7L;
+        for (float s : scales) {
+            for (int i = 0; i <= 4000; i++) {
+                float t = i * 0.25f;
+                float f = SmoothDrift.flowSpeed(t, seed) * s;
+                float r = SmoothDrift.rotSpeed(t, seed) * s;
+                assertTrue(f >= -SmoothDrift.FLOW_MAX * s - 1e-4f && f <= SmoothDrift.FLOW_MAX * s + 1e-4f);
+                assertTrue(r >= -SmoothDrift.ROT_MAX * s - 1e-4f && r <= SmoothDrift.ROT_MAX * s + 1e-4f);
+            }
+        }
+    }
 }

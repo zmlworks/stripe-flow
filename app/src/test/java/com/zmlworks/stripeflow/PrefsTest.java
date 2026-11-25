@@ -38,6 +38,8 @@ public class PrefsTest {
         assertFalse(Prefs.autoDrift(c));
         assertEquals(8, Prefs.autoWidth(c));
         assertEquals(Prefs.COLOR_BW, Prefs.colorScheme(c));
+        assertEquals(1f, Prefs.distScale(c), 0f);
+        assertEquals(2f, Prefs.hueRate(c), 0f);
     }
 
     @Test public void roundTrip() {
@@ -52,7 +54,9 @@ public class PrefsTest {
         Prefs.setWander(c, true);
         Prefs.setAutoDrift(c, true);
         Prefs.setAutoWidth(c, 24);
-        Prefs.setColorScheme(c, Prefs.COLOR_GM);
+        Prefs.setColorScheme(c, Prefs.COLOR_MODE);
+        Prefs.setDistScale(c, 2.5f);
+        Prefs.setHueRate(c, 0f);
         assertEquals(7, Prefs.speed(c));
         assertEquals(40, Prefs.width(c));
         assertEquals(Prefs.DIR_UP_LEFT, Prefs.direction(c));
@@ -64,7 +68,9 @@ public class PrefsTest {
         assertTrue(Prefs.wander(c));
         assertTrue(Prefs.autoDrift(c));
         assertEquals(24, Prefs.autoWidth(c));
-        assertEquals(Prefs.COLOR_GM, Prefs.colorScheme(c));
+        assertEquals(Prefs.COLOR_MODE, Prefs.colorScheme(c));
+        assertEquals(2.5f, Prefs.distScale(c), 0.0001f);
+        assertEquals(0f, Prefs.hueRate(c), 0f);
     }
 
     @Test public void clampsInvalidValuesAndKeepsOldWidths() {
@@ -95,6 +101,14 @@ public class PrefsTest {
         assertEquals(Prefs.WIDTH_MIN, Prefs.autoWidth(c));
         Prefs.setAutoWidth(c, 99);
         assertEquals(Prefs.WIDTH_MAX, Prefs.autoWidth(c));
+        Prefs.setDistScale(c, 0.01f);
+        assertEquals(Prefs.DIST_MIN, Prefs.distScale(c), 0f);
+        Prefs.setDistScale(c, 9f);
+        assertEquals(Prefs.DIST_MAX, Prefs.distScale(c), 0f);
+        Prefs.setHueRate(c, -1f);
+        assertEquals(0f, Prefs.hueRate(c), 0f);
+        Prefs.setHueRate(c, 99f);
+        assertEquals(Prefs.HUE_RATE_MAX, Prefs.hueRate(c), 0f);
         Prefs.sp(c).edit().putInt(Prefs.SPEED, -3).putInt(Prefs.WIDTH, 0).putFloat(Prefs.BRIGHT, 9f).commit();
         assertEquals(Prefs.SPEED_MIN, Prefs.speed(c));
         assertEquals(1, Prefs.width(c));
@@ -118,5 +132,7 @@ public class PrefsTest {
     @Test public void unknownColorSchemeFallsBackToBlackWhite() {
         Prefs.sp(c).edit().putInt(Prefs.COLOR, 9).commit();
         assertEquals(Prefs.COLOR_BW, Prefs.colorScheme(c));
+        assertEquals(1f, Prefs.distScale(c), 0f);
+        assertEquals(2f, Prefs.hueRate(c), 0f);
     }
 }

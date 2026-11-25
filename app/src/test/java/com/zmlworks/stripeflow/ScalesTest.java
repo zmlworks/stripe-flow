@@ -39,4 +39,23 @@ public class ScalesTest {
         // First 20% of the slider stays under 1 °/s so slow motion is settable.
         assertTrue(Scales.rotFromProgress(Scales.STEPS / 5) < 1f);
     }
+
+    @Test public void distScaleIsLogarithmicAndDefaultsToOne() {
+        assertEquals(Prefs.DIST_MIN, Scales.distFromProgress(0), 1e-5f);
+        assertEquals(Prefs.DIST_MAX, Scales.distFromProgress(Scales.STEPS), 1e-4f);
+        assertEquals(1f, Scales.distFromProgress(Scales.progressFromDist(1f)), 0.02f);
+        int mid = Scales.STEPS / 2;
+        float midV = Scales.distFromProgress(mid);
+        // Geometric mid of 0.1 and 5 is sqrt(0.5) ≈ 0.707, not the arithmetic mid 2.55.
+        assertTrue("log mid " + midV, midV > 0.5f && midV < 1.0f);
+        assertEquals(Scales.progressFromDist(0.1f), 0);
+    }
+
+    @Test public void hueRateCubeIncludesZeroAndDefault() {
+        assertEquals(0f, Scales.hueRateFromProgress(0), 0f);
+        assertEquals(Prefs.HUE_RATE_MAX, Scales.hueRateFromProgress(Scales.STEPS), 0.01f);
+        float back = Scales.hueRateFromProgress(Scales.progressFromHueRate(Prefs.HUE_RATE_DEFAULT));
+        assertEquals(Prefs.HUE_RATE_DEFAULT, back, 0.05f);
+        assertTrue(Scales.progressFromHueRate(Prefs.HUE_RATE_DEFAULT) < Scales.STEPS / 2);
+    }
 }

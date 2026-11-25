@@ -18,10 +18,10 @@ import java.util.Locale;
 
 /** Launch screen: remember settings, then open the full-screen stripes. */
 public final class SettingsActivity extends Activity {
-    private TextView speedValue, widthValue, brightValue, rotSpeedValue, autoHint;
-    private SeekBar speedBar, widthBar, brightBar, rotSpeedBar;
+    private TextView speedValue, widthValue, brightValue, rotSpeedValue, autoHint, distValue, hueRateValue;
+    private SeekBar speedBar, widthBar, brightBar, rotSpeedBar, distBar, hueRateBar;
     private CheckBox systemBright, rotate, wander, autoDrift;
-    private LinearLayout rotPanel, manualPanel;
+    private LinearLayout rotPanel, manualPanel, autoPanel, colorPanel;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -66,9 +66,25 @@ public final class SettingsActivity extends Activity {
         autoLp.topMargin = Ui.dp(this, 16);
         col.addView(autoDrift, autoLp);
 
-        autoHint = text(getString(R.string.auto_hint), 13, Ui.DIM);
+        autoPanel = new LinearLayout(this);
+        autoPanel.setOrientation(LinearLayout.VERTICAL);
+        heading(autoPanel, R.string.dist_scale);
+        distValue = text("", 14, Ui.DIM);
+        autoPanel.addView(distValue);
+        distBar = seek(Scales.STEPS, Scales.progressFromDist(Prefs.distScale(this)));
+        autoPanel.addView(distBar, lp());
+        distBar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                float v = Scales.distFromProgress(p);
+                if (fromUser) Prefs.setDistScale(SettingsActivity.this, v);
+                refreshDist(v);
+            }
+        });
+        autoHint = text("", 13, Ui.DIM);
         autoHint.setPadding(0, Ui.dp(this, 8), 0, 0);
-        col.addView(autoHint);
+        autoPanel.addView(autoHint);
+        col.addView(autoPanel, lp());
+        refreshDist(Prefs.distScale(this));
 
         LinearLayout widthPanel = new LinearLayout(this);
         widthPanel.setOrientation(LinearLayout.VERTICAL);
@@ -91,10 +107,29 @@ public final class SettingsActivity extends Activity {
 
         heading(col, R.string.color);
         col.addView(radios(
-                new String[]{getString(R.string.color_bw), getString(R.string.color_gm)},
-                new int[]{Prefs.COLOR_BW, Prefs.COLOR_GM},
+                new String[]{getString(R.string.color_bw), getString(R.string.color_mode)},
+                new int[]{Prefs.COLOR_BW, Prefs.COLOR_MODE},
                 Prefs.colorScheme(this),
-                v -> Prefs.setColorScheme(this, v)));
+                v -> {
+                    Prefs.setColorScheme(this, v);
+                    refreshColor();
+                }));
+        colorPanel = new LinearLayout(this);
+        colorPanel.setOrientation(LinearLayout.VERTICAL);
+        heading(colorPanel, R.string.hue_rate);
+        hueRateValue = text("", 14, Ui.DIM);
+        colorPanel.addView(hueRateValue);
+        hueRateBar = seek(Scales.STEPS, Scales.progressFromHueRate(Prefs.hueRate(this)));
+        colorPanel.addView(hueRateBar, lp());
+        hueRateBar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                float v = Scales.hueRateFromProgress(p);
+                if (fromUser) Prefs.setHueRate(SettingsActivity.this, v);
+                hueRateValue.setText(hueRateLabel(v));
+            }
+        });
+        hueRateValue.setText(hueRateLabel(Prefs.hueRate(this)));
+        col.addView(colorPanel, lp());
 
         manualPanel = new LinearLayout(this);
         manualPanel.setOrientation(LinearLayout.VERTICAL);
@@ -196,6 +231,7 @@ public final class SettingsActivity extends Activity {
         refreshBrightness();
         refreshRotate();
         refreshAuto();
+        refreshColor();
     }
 
     private void refreshBrightness() {
@@ -210,9 +246,35 @@ public final class SettingsActivity extends Activity {
 
     private void refreshAuto() {
         boolean on = autoDrift.isChecked();
-        autoHint.setVisibility(on ? View.VISIBLE : View.GONE);
+        autoPanel.setVisibility(on ? View.VISIBLE : View.GONE);
         manualPanel.setVisibility(on ? View.GONE : View.VISIBLE);
         bindWidth();
+    }
+
+    private void refreshColor() {
+        boolean on = Prefs.colorScheme(this) == Prefs.COLOR_MODE;
+        colorPanel.setVisibility(on ? View.VISIBLE : View.GONE);
+    }
+
+    private void refreshDist(float scale) {
+        distValue.setText(getString(R.string.dist_scale_value, formatNum(scale)));
+        float flow = SmoothDrift.FLOW_MAX * scale;
+        float rot = SmoothDrift.ROT_MAX * scale;
+        autoHint.setText(getString(R.string.auto_hint,
+                signed(flow), formatNum(flow), signed(rot), formatNum(rot)));
+    }
+
+    private static String signed(float v) {
+        return "-" + formatNum(v);
+    }
+
+    private String hueRateLabel(float degPerSec) {
+        if (degPerSec <= 0f) return getString(R.string.hue_rate_fixed);
+        float period = 360f / degPerSec;
+        if (period >= 120f) {
+            return getString(R.string.hue_rate_cycle_min, formatNum(period / 60f));
+        }
+        return getString(R.string.hue_rate_cycle_sec, formatNum(period));
     }
 
     private void bindWidth() {

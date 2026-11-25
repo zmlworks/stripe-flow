@@ -20,12 +20,16 @@ final class Prefs {
     static final String AUTO = "auto_drift";
     static final String AUTO_WIDTH = "auto_stripe_width";
     static final String COLOR = "color_scheme";
+    static final String DIST = "dist_scale";
+    static final String HUE_RATE = "hue_rate_deg_s";
 
     static final int SPEED_MIN = 0, SPEED_MAX = 300, SPEED_DEFAULT = 3;
     static final int WIDTH_MIN = 1, WIDTH_MAX = 64, WIDTH_DEFAULT = 1, AUTO_WIDTH_DEFAULT = 8;
     /** +1 = against the normal, -1 = along the normal (down-right at the starting 45°). */
     static final int DIR_DOWN_RIGHT = -1, DIR_UP_LEFT = 1, DIR_DEFAULT = DIR_DOWN_RIGHT;
-    static final int COLOR_BW = StripePattern.SCHEME_BW, COLOR_GM = StripePattern.SCHEME_GM, COLOR_DEFAULT = COLOR_BW;
+    static final int COLOR_BW = StripePattern.SCHEME_BW, COLOR_MODE = StripePattern.SCHEME_COLOR, COLOR_DEFAULT = COLOR_BW;
+    static final float DIST_MIN = 0.1f, DIST_MAX = 5f, DIST_DEFAULT = 1f;
+    static final float HUE_RATE_MIN = HueDrift.RATE_MIN, HUE_RATE_MAX = HueDrift.RATE_MAX, HUE_RATE_DEFAULT = HueDrift.RATE_DEFAULT;
     static final float BRIGHT_DEFAULT = 1f;
     static final float ROT_MIN = 0f, ROT_MAX = 90f, ROT_DEFAULT = 0.5f;
     /** +1 = clockwise on screen (y down), -1 = counterclockwise. */
@@ -136,11 +140,27 @@ final class Prefs {
 
     static int colorScheme(Context c) {
         int v = sp(c).getInt(COLOR, COLOR_DEFAULT);
-        return v == COLOR_GM ? COLOR_GM : COLOR_BW;
+        return v == COLOR_MODE ? COLOR_MODE : COLOR_BW;
     }
 
     static void setColorScheme(Context c, int v) {
-        sp(c).edit().putInt(COLOR, v == COLOR_GM ? COLOR_GM : COLOR_BW).apply();
+        sp(c).edit().putInt(COLOR, v == COLOR_MODE ? COLOR_MODE : COLOR_BW).apply();
+    }
+
+    static float distScale(Context c) {
+        return clampF(sp(c).getFloat(DIST, DIST_DEFAULT), DIST_MIN, DIST_MAX);
+    }
+
+    static void setDistScale(Context c, float v) {
+        sp(c).edit().putFloat(DIST, clampF(v, DIST_MIN, DIST_MAX)).apply();
+    }
+
+    static float hueRate(Context c) {
+        return clampF(sp(c).getFloat(HUE_RATE, HUE_RATE_DEFAULT), HUE_RATE_MIN, HUE_RATE_MAX);
+    }
+
+    static void setHueRate(Context c, float v) {
+        sp(c).edit().putFloat(HUE_RATE, clampF(v, HUE_RATE_MIN, HUE_RATE_MAX)).apply();
     }
 
     static int clamp(int v, int lo, int hi) {

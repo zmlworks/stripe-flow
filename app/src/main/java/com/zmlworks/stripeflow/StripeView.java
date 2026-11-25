@@ -33,6 +33,11 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     private boolean wander;
     private boolean auto;
     private int colorScheme = StripePattern.SCHEME_BW;
+    private float distScale = Prefs.DIST_DEFAULT;
+    private float hueRate = Prefs.HUE_RATE_DEFAULT;
+    private int[] maskPx, colorPx;
+    private final float[] hsv = new float[3];
+    private float lastHue = Float.NaN;
     private long wanderSeed = 1L;
     private long startNanos;
     private boolean running;
@@ -59,21 +64,31 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         if (auto) {
             configure(Prefs.autoWidth(c), 0f, Prefs.DIR_DEFAULT,
                     true, 0f, Prefs.ROT_CW, true, System.nanoTime(), true,
-                    Prefs.colorScheme(c));
+                    Prefs.colorScheme(c), Prefs.distScale(c), Prefs.hueRate(c));
         } else {
             configure(Prefs.width(c), Prefs.speed(c), Prefs.direction(c),
                     Prefs.rotate(c), Prefs.rotateSpeed(c), Prefs.rotateDir(c),
                     Prefs.wander(c), System.nanoTime(), false,
-                    Prefs.colorScheme(c));
+                    Prefs.colorScheme(c), Prefs.DIST_DEFAULT, Prefs.hueRate(c));
         }
     }
 
     void configure(int width, float speedPxPerSec, int direction,
                    boolean rotate, float rotDegPerSec, int rotDir,
                    boolean wander, long wanderSeed, boolean auto, int colorScheme) {
+        configure(width, speedPxPerSec, direction, rotate, rotDegPerSec, rotDir,
+                wander, wanderSeed, auto, colorScheme, Prefs.DIST_DEFAULT, Prefs.HUE_RATE_DEFAULT);
+    }
+
+    void configure(int width, float speedPxPerSec, int direction,
+                   boolean rotate, float rotDegPerSec, int rotDir,
+                   boolean wander, long wanderSeed, boolean auto, int colorScheme,
+                   float distScale, float hueRate) {
         this.auto = auto;
-        this.colorScheme = colorScheme == StripePattern.SCHEME_GM
-                ? StripePattern.SCHEME_GM : StripePattern.SCHEME_BW;
+        this.colorScheme = colorScheme == StripePattern.SCHEME_COLOR
+                ? StripePattern.SCHEME_COLOR : StripePattern.SCHEME_BW;
+        this.distScale = Prefs.clampF(distScale, Prefs.DIST_MIN, Prefs.DIST_MAX);
+        this.hueRate = Prefs.clampF(hueRate, Prefs.HUE_RATE_MIN, Prefs.HUE_RATE_MAX);
         this.stripeWidth = Prefs.clamp(width, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
         this.speed = speedPxPerSec;
         this.direction = direction >= 0 ? 1 : -1;
@@ -83,12 +98,20 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         this.wander = wander || auto;
         this.wanderSeed = wanderSeed;
         if (tile != null) tile.recycle();
-        tile = StripePattern.tile(this.stripeWidth, this.colorScheme);
+        tile = StripePattern.tile(this.stripeWidth);
+        int n = tile.getWidth() * tile.getHeight();
+        if (maskPx == null || maskPx.length != n) {
+            maskPx = new int[n];
+            colorPx = new int[n];
+        }
+        tile.getPixels(maskPx, 0, tile.getWidth(), 0, 0, tile.getWidth(), tile.getHeight());
         shader = new BitmapShader(tile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT);
         paint.setShader(shader);
         havePivot = false;
         pivotComp = 0f;
+        lastHue = Float.NaN;
         resetAutoMotion();
+        applyHueAt(0f);
         applyPose(this.angle, Float.NaN, Float.NaN, this.offset);
     }
 
@@ -146,6 +169,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         float off = StripePattern.wrap(flowOff + pivotComp, StripePattern.period(stripeWidth));
         this.angle = ang;
         this.offset = off;
+        applyHueAt(t);
         applyMatrix(ang, pivot[0], pivot[1], off);
         invalidate();
     }
@@ -154,6 +178,28 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     float angle() { return angle; }
     float pivotX() { return pivot[0]; }
     float pivotY() { return pivot[1]; }
+    float hue() { return lastHue; }
+    int colorScheme() { return colorScheme; }
+
+    private void applyHueAt(float t) {
+        if (colorScheme != StripePattern.SCHEME_COLOR) return;
+        applyHue(HueDrift.hueDeg(t, wanderSeed, hueRate));
+    }
+
+    /** Recolour the existing tile in place. No allocation after the first configure. */
+    private void applyHue(float hueDeg) {
+        if (colorScheme != StripePattern.SCHEME_COLOR) return;
+        if (maskPx == null || tile == null) return;
+        if (!Float.isNaN(lastHue) && hueDeg == lastHue) return;
+        lastHue = hueDeg;
+        int c0 = StripePattern.colorAtHue(hueDeg, hsv);
+        int c1 = StripePattern.colorAtHue(hueDeg + 180f, hsv);
+        for (int i = 0; i < maskPx.length; i++) {
+            colorPx[i] = (maskPx[i] == StripePattern.BLACK) ? c0 : c1;
+        }
+        tile.setPixels(colorPx, 0, tile.getWidth(), 0, 0, tile.getWidth(), tile.getHeight());
+    }
+
 
     private void resetAutoMotion() {
         autoT = 0f;
@@ -172,8 +218,8 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
 
     private void stepAuto(float dt) {
         float mid = autoT + 0.5f * dt;
-        autoFlowOff += SmoothDrift.flowSpeed(mid, wanderSeed) * dt;
-        autoAng += (float) Math.toRadians(SmoothDrift.rotSpeed(mid, wanderSeed)) * dt;
+        autoFlowOff += SmoothDrift.flowSpeed(mid, wanderSeed) * distScale * dt;
+        autoAng += (float) Math.toRadians(SmoothDrift.rotSpeed(mid, wanderSeed) * distScale) * dt;
         autoT += dt;
     }
 
