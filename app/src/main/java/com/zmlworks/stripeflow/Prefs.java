@@ -17,6 +17,7 @@ final class Prefs {
     static final String ROT_SPEED = "rotate_speed_deg_s";
     static final String ROT_DIR = "rotate_dir";
     static final String WANDER = "wander_pivot";
+    static final String AUTO = "auto_drift";
 
     static final int SPEED_MIN = 0, SPEED_MAX = 300, SPEED_DEFAULT = 3;
     static final int WIDTH_MIN = 1, WIDTH_MAX = 64, WIDTH_DEFAULT = 1;
@@ -111,6 +112,14 @@ final class Prefs {
 
     static void setWander(Context c, boolean v) {
         sp(c).edit().putBoolean(WANDER, v).apply();
+    }
+
+    static boolean autoDrift(Context c) {
+        return sp(c).getBoolean(AUTO, false);
+    }
+
+    static void setAutoDrift(Context c, boolean v) {
+        sp(c).edit().putBoolean(AUTO, v).apply();
     }
 
     static int clamp(int v, int lo, int hi) {

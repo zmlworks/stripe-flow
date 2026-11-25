@@ -31,6 +31,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     private float rotDegPerSec = Prefs.ROT_DEFAULT;
     private int rotDir = Prefs.ROT_DIR_DEFAULT;
     private boolean wander;
+    private boolean auto;
     private long wanderSeed = 1L;
     private long startNanos;
     private boolean running;
@@ -48,21 +49,29 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     }
 
     void applyPrefs(Context c) {
-        configure(Prefs.width(c), Prefs.speed(c), Prefs.direction(c),
-                Prefs.rotate(c), Prefs.rotateSpeed(c), Prefs.rotateDir(c),
-                Prefs.wander(c), System.nanoTime());
+        boolean auto = Prefs.autoDrift(c);
+        if (auto) {
+            configure(SmoothDrift.WIDTH, 0f, Prefs.DIR_DEFAULT,
+                    true, 0f, Prefs.ROT_CW, true, System.nanoTime(), true);
+        } else {
+            configure(Prefs.width(c), Prefs.speed(c), Prefs.direction(c),
+                    Prefs.rotate(c), Prefs.rotateSpeed(c), Prefs.rotateDir(c),
+                    Prefs.wander(c), System.nanoTime(), false);
+        }
     }
 
     void configure(int width, float speedPxPerSec, int direction,
                    boolean rotate, float rotDegPerSec, int rotDir,
-                   boolean wander, long wanderSeed) {
-        this.stripeWidth = Prefs.clamp(width, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
+                   boolean wander, long wanderSeed, boolean auto) {
+        this.auto = auto;
+        this.stripeWidth = auto ? SmoothDrift.WIDTH
+                : Prefs.clamp(width, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
         this.speed = speedPxPerSec;
         this.direction = direction >= 0 ? 1 : -1;
-        this.rotate = rotate;
+        this.rotate = rotate || auto;
         this.rotDegPerSec = Prefs.clampF(rotDegPerSec, Prefs.ROT_MIN, Prefs.ROT_MAX);
         this.rotDir = rotDir < 0 ? Prefs.ROT_CCW : Prefs.ROT_CW;
-        this.wander = wander;
+        this.wander = wander || auto;
         this.wanderSeed = wanderSeed;
         if (tile != null) tile.recycle();
         tile = StripePattern.tile(this.stripeWidth);
@@ -93,16 +102,26 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     void setElapsedNanos(long elapsedNanos) {
         float t = elapsedNanos / 1_000_000_000f;
         if (t < 0f) t = 0f;
-        float ang = StripePattern.BASE_ANGLE_RAD;
-        if (rotate) {
-            ang += rotDir * (float) Math.toRadians(rotDegPerSec) * t;
-        }
         int vw = Math.max(1, getWidth()), vh = Math.max(1, getHeight());
-        if (rotate && wander) {
+        float ang;
+        float flowOff;
+        if (auto) {
+            ang = StripePattern.BASE_ANGLE_RAD
+                    + (float) Math.toRadians(SmoothDrift.rotIntegral(t, wanderSeed));
+            flowOff = SmoothDrift.flowIntegral(t, wanderSeed);
             PivotWander.position(t, vw, vh, wanderSeed, pivot);
         } else {
-            pivot[0] = vw / 2f;
-            pivot[1] = vh / 2f;
+            ang = StripePattern.BASE_ANGLE_RAD;
+            if (rotate) {
+                ang += rotDir * (float) Math.toRadians(rotDegPerSec) * t;
+            }
+            flowOff = (direction >= 0 ? 1f : -1f) * speed * t;
+            if (rotate && wander) {
+                PivotWander.position(t, vw, vh, wanderSeed, pivot);
+            } else {
+                pivot[0] = vw / 2f;
+                pivot[1] = vh / 2f;
+            }
         }
         if (!havePivot) {
             prevPivot[0] = pivot[0];
@@ -114,9 +133,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
             prevPivot[0] = pivot[0];
             prevPivot[1] = pivot[1];
         }
-        float off = StripePattern.wrap(
-                (direction >= 0 ? 1f : -1f) * speed * t + pivotComp,
-                StripePattern.period(stripeWidth));
+        float off = StripePattern.wrap(flowOff + pivotComp, StripePattern.period(stripeWidth));
         this.angle = ang;
         this.offset = off;
         applyMatrix(ang, pivot[0], pivot[1], off);

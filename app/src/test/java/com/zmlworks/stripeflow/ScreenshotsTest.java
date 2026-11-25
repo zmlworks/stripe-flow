@@ -28,10 +28,12 @@ import org.robolectric.annotation.GraphicsMode;
 @Config(sdk = 35, qualifiers = "w360dp-h800dp-port-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class ScreenshotsTest {
-    static final int W = 1080, H = 2400;
+    static final int W = 1080, H = 3000;
     static final File DIR = new File("build/reports/screens");
 
     @Test public void settingsScreen() throws Exception {
+        android.content.Context app = RuntimeEnvironment.getApplication();
+        Prefs.sp(app).edit().clear().commit();
         Activity a = Robolectric.buildActivity(SettingsActivity.class).setup().get();
         Bitmap bmp = drawActivity(a);
         assertNotEquals(0, countColor(bmp, Ui.BG));
@@ -53,9 +55,20 @@ public class ScreenshotsTest {
         Prefs.sp(app).edit().clear().commit();
     }
 
+    @Test public void settingsScreenAutoDrift() throws Exception {
+        android.content.Context app = RuntimeEnvironment.getApplication();
+        Prefs.sp(app).edit().clear().commit();
+        Prefs.setAutoDrift(app, true);
+        Activity a = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        Bitmap bmp = drawActivity(a);
+        assertTrue(countColor(bmp, Ui.TEXT) > 100);
+        save(bmp, "settings-auto.png");
+        Prefs.sp(app).edit().clear().commit();
+    }
+
     @Test public void stripeViewMatchesPointSamplingAndRotatesWithoutJumping() throws Exception {
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
-        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L);
+        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false);
         int s = 256;
         v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
@@ -107,6 +120,45 @@ public class ScreenshotsTest {
             assertEquals(StripePattern.colorFromPhase(0f, width), bmp.getPixel(s / 2, s / 2));
             save(bmp, String.format(Locale.US, "rot-frames/frame-%03d.png", i));
         }
+    }
+
+    /** Time-lapse of auto drift: 90 s of motion in 45 frames, integrated at 30 Hz. */
+    @Test public void autoDriftFrames() throws Exception {
+        File frameDir = new File(DIR, "auto-frames");
+        if (!frameDir.exists() && !frameDir.mkdirs()) throw new IOException("mkdir frames");
+        int s = 320;
+        long seed = 7L;
+        StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
+        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, true, 0f, Prefs.ROT_CW, true, seed, true);
+        v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, s, s);
+        int frames = 45;
+        float span = 90f;
+        int hz = 30;
+        int steps = Math.round(span * hz);
+        Bitmap first = null, last = null;
+        int i = 0;
+        v.setElapsedNanos(0L);
+        for (int k = 0; k < frames; k++) {
+            int target = Math.round(k * steps / (float) (frames - 1));
+            while (i < target) {
+                i++;
+                v.setElapsedNanos((long) (i / (float) hz * 1_000_000_000f));
+            }
+            Bitmap bmp = drawView(v);
+            assertOnlyBlackAndWhite(bmp);
+            if (k == 0) first = bmp;
+            if (k == frames - 1) last = bmp;
+            save(bmp, String.format(Locale.US, "auto-frames/frame-%03d.png", k));
+        }
+        if (first == null || last == null) throw new AssertionError("missing end frames");
+        int changed = 0;
+        int[] a = new int[s * s], b = new int[s * s];
+        first.getPixels(a, 0, s, 0, 0, s, s);
+        last.getPixels(b, 0, s, 0, 0, s, s);
+        for (int j = 0; j < a.length; j++) if (a[j] != b[j]) changed++;
+        assertTrue("pattern should move over 90 s; changed=" + changed, changed > 1000);
     }
 
     static Bitmap drawActivity(Activity a) {

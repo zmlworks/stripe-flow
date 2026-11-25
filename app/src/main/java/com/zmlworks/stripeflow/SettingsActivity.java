@@ -18,10 +18,10 @@ import java.util.Locale;
 
 /** Launch screen: remember settings, then open the full-screen stripes. */
 public final class SettingsActivity extends Activity {
-    private TextView speedValue, widthValue, brightValue, rotSpeedValue;
+    private TextView speedValue, widthValue, brightValue, rotSpeedValue, autoHint;
     private SeekBar speedBar, widthBar, brightBar, rotSpeedBar;
-    private CheckBox systemBright, rotate, wander;
-    private LinearLayout rotPanel;
+    private CheckBox systemBright, rotate, wander, autoDrift;
+    private LinearLayout rotPanel, manualPanel;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -58,11 +58,27 @@ public final class SettingsActivity extends Activity {
             }
         });
 
-        heading(col, R.string.speed);
+        autoDrift = new CheckBox(this);
+        autoDrift.setText(R.string.auto_drift);
+        autoDrift.setTextColor(Ui.TEXT);
+        autoDrift.setChecked(Prefs.autoDrift(this));
+        LinearLayout.LayoutParams autoLp = lp();
+        autoLp.topMargin = Ui.dp(this, 16);
+        col.addView(autoDrift, autoLp);
+
+        autoHint = text(getString(R.string.auto_hint), 13, Ui.DIM);
+        autoHint.setPadding(0, Ui.dp(this, 8), 0, 0);
+        col.addView(autoHint);
+
+        manualPanel = new LinearLayout(this);
+        manualPanel.setOrientation(LinearLayout.VERTICAL);
+        col.addView(manualPanel, lp());
+
+        heading(manualPanel, R.string.speed);
         speedValue = text("", 14, Ui.DIM);
-        col.addView(speedValue);
+        manualPanel.addView(speedValue);
         speedBar = seek(Scales.STEPS, Scales.progressFromSpeed(Prefs.speed(this)));
-        col.addView(speedBar, lp());
+        manualPanel.addView(speedBar, lp());
         speedBar.setOnSeekBarChangeListener(new SimpleSeek() {
             @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
                 int v = Scales.speedFromProgress(p);
@@ -72,11 +88,11 @@ public final class SettingsActivity extends Activity {
         });
         speedValue.setText(getString(R.string.speed_value, Prefs.speed(this)));
 
-        heading(col, R.string.stripe_width);
+        heading(manualPanel, R.string.stripe_width);
         widthValue = text("", 14, Ui.DIM);
-        col.addView(widthValue);
+        manualPanel.addView(widthValue);
         widthBar = seek(Prefs.WIDTH_MAX - Prefs.WIDTH_MIN, Prefs.width(this) - Prefs.WIDTH_MIN);
-        col.addView(widthBar, lp());
+        manualPanel.addView(widthBar, lp());
         widthBar.setOnSeekBarChangeListener(new SimpleSeek() {
             @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
                 int v = p + Prefs.WIDTH_MIN;
@@ -86,15 +102,15 @@ public final class SettingsActivity extends Activity {
         });
         widthValue.setText(getString(R.string.width_value, Prefs.width(this)));
 
-        heading(col, R.string.direction);
-        col.addView(radios(
+        heading(manualPanel, R.string.direction);
+        manualPanel.addView(radios(
                 new String[]{getString(R.string.dir_down_right), getString(R.string.dir_up_left)},
                 new int[]{Prefs.DIR_DOWN_RIGHT, Prefs.DIR_UP_LEFT},
                 Prefs.direction(this),
                 v -> Prefs.setDirection(this, v)));
         TextView dirHint = text(getString(R.string.dir_hint), 13, Ui.DIM);
         dirHint.setPadding(0, Ui.dp(this, 4), 0, 0);
-        col.addView(dirHint);
+        manualPanel.addView(dirHint);
 
         rotate = new CheckBox(this);
         rotate.setText(R.string.rotate);
@@ -102,7 +118,7 @@ public final class SettingsActivity extends Activity {
         rotate.setChecked(Prefs.rotate(this));
         LinearLayout.LayoutParams rotLp = lp();
         rotLp.topMargin = Ui.dp(this, 16);
-        col.addView(rotate, rotLp);
+        manualPanel.addView(rotate, rotLp);
 
         rotPanel = new LinearLayout(this);
         rotPanel.setOrientation(LinearLayout.VERTICAL);
@@ -138,11 +154,15 @@ public final class SettingsActivity extends Activity {
         TextView wanderHint = text(getString(R.string.wander_hint), 13, Ui.DIM);
         wanderHint.setPadding(0, Ui.dp(this, 4), 0, 0);
         rotPanel.addView(wanderHint);
-        col.addView(rotPanel, lp());
+        manualPanel.addView(rotPanel, lp());
 
         rotate.setOnCheckedChangeListener((v, on) -> {
             Prefs.setRotate(this, on);
             refreshRotate();
+        });
+        autoDrift.setOnCheckedChangeListener((v, on) -> {
+            Prefs.setAutoDrift(this, on);
+            refreshAuto();
         });
 
         Button start = new Button(this);
@@ -163,6 +183,7 @@ public final class SettingsActivity extends Activity {
         Ui.edgeToEdge(this, sv);
         refreshBrightness();
         refreshRotate();
+        refreshAuto();
     }
 
     private void refreshBrightness() {
@@ -173,6 +194,12 @@ public final class SettingsActivity extends Activity {
 
     private void refreshRotate() {
         rotPanel.setVisibility(rotate.isChecked() ? View.VISIBLE : View.GONE);
+    }
+
+    private void refreshAuto() {
+        boolean on = autoDrift.isChecked();
+        autoHint.setVisibility(on ? View.VISIBLE : View.GONE);
+        manualPanel.setVisibility(on ? View.GONE : View.VISIBLE);
     }
 
     private String rotLabel(float degPerSec) {
