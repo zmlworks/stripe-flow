@@ -68,7 +68,7 @@ public class ScreenshotsTest {
 
     @Test public void stripeViewMatchesPointSamplingAndRotatesWithoutJumping() throws Exception {
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
-        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false);
+        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false, StripePattern.SCHEME_BW);
         int s = 256;
         v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
@@ -129,7 +129,7 @@ public class ScreenshotsTest {
         int s = 320;
         long seed = 7L;
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
-        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, true, 0f, Prefs.ROT_CW, true, seed, true);
+        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, true, 0f, Prefs.ROT_CW, true, seed, true, StripePattern.SCHEME_BW);
         v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
         v.layout(0, 0, s, s);
@@ -161,7 +161,36 @@ public class ScreenshotsTest {
         assertTrue("pattern should move over 90 s; changed=" + changed, changed > 1000);
     }
 
+    @Test public void greenMagentaStripeFrame() throws Exception {
+        int s = 256;
+        StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
+        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false,
+                StripePattern.SCHEME_GM);
+        v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, s, s);
+        float cx = s / 2f, cy = s / 2f;
+        float a0 = StripePattern.BASE_ANGLE_RAD;
+        v.setState(a0, cx, cy, 0f);
+        Bitmap bmp = drawView(v);
+        assertEquals(StripePattern.color(cx, cy, cx, cy, a0, 0f, 8, StripePattern.SCHEME_GM),
+                bmp.getPixel(s / 2, s / 2));
+        int[] px = new int[s * s];
+        bmp.getPixels(px, 0, s, 0, 0, s, s);
+        int green = 0, magenta = 0;
+        for (int c : px) {
+            assertTrue("unexpected pixel " + Integer.toHexString(c),
+                    c == StripePattern.GREEN || c == StripePattern.MAGENTA);
+            if (c == StripePattern.GREEN) green++;
+            else magenta++;
+        }
+        assertTrue(green > 1000 && magenta > 1000);
+        save(bmp, "stripes-45-w8-gm.png");
+        save(crop(bmp, 0, 0, 64, 64), "stripes-45-w8-gm-detail.png");
+    }
+
     static Bitmap drawActivity(Activity a) {
+
         View root = a.getWindow().getDecorView();
         root.measure(View.MeasureSpec.makeMeasureSpec(W, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(H, View.MeasureSpec.EXACTLY));

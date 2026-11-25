@@ -89,6 +89,13 @@ public final class SettingsActivity extends Activity {
         });
         col.addView(widthPanel, lp());
 
+        heading(col, R.string.color);
+        col.addView(radios(
+                new String[]{getString(R.string.color_bw), getString(R.string.color_gm)},
+                new int[]{Prefs.COLOR_BW, Prefs.COLOR_GM},
+                Prefs.colorScheme(this),
+                v -> Prefs.setColorScheme(this, v)));
+
         manualPanel = new LinearLayout(this);
         manualPanel.setOrientation(LinearLayout.VERTICAL);
         col.addView(manualPanel, lp());

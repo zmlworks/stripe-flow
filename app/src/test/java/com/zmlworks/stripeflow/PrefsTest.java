@@ -37,6 +37,7 @@ public class PrefsTest {
         assertFalse(Prefs.wander(c));
         assertFalse(Prefs.autoDrift(c));
         assertEquals(8, Prefs.autoWidth(c));
+        assertEquals(Prefs.COLOR_BW, Prefs.colorScheme(c));
     }
 
     @Test public void roundTrip() {
@@ -51,6 +52,7 @@ public class PrefsTest {
         Prefs.setWander(c, true);
         Prefs.setAutoDrift(c, true);
         Prefs.setAutoWidth(c, 24);
+        Prefs.setColorScheme(c, Prefs.COLOR_GM);
         assertEquals(7, Prefs.speed(c));
         assertEquals(40, Prefs.width(c));
         assertEquals(Prefs.DIR_UP_LEFT, Prefs.direction(c));
@@ -62,6 +64,7 @@ public class PrefsTest {
         assertTrue(Prefs.wander(c));
         assertTrue(Prefs.autoDrift(c));
         assertEquals(24, Prefs.autoWidth(c));
+        assertEquals(Prefs.COLOR_GM, Prefs.colorScheme(c));
     }
 
     @Test public void clampsInvalidValuesAndKeepsOldWidths() {
@@ -102,10 +105,18 @@ public class PrefsTest {
         Prefs.setWidth(c, 12);
         Prefs.setAutoDrift(c, true);
         assertEquals(12, Prefs.width(c));
-        assertTrue(Prefs.autoDrift(c));
+        assertEquals(8, Prefs.autoWidth(c));
+        Prefs.setAutoWidth(c, 16);
+        assertEquals(12, Prefs.width(c));
+        assertEquals(16, Prefs.autoWidth(c));
         Prefs.setAutoDrift(c, false);
         assertEquals(12, Prefs.width(c));
+        assertEquals(16, Prefs.autoWidth(c));
         assertFalse(Prefs.autoDrift(c));
-        assertEquals(8, Prefs.autoWidth(c));
+    }
+
+    @Test public void unknownColorSchemeFallsBackToBlackWhite() {
+        Prefs.sp(c).edit().putInt(Prefs.COLOR, 9).commit();
+        assertEquals(Prefs.COLOR_BW, Prefs.colorScheme(c));
     }
 }

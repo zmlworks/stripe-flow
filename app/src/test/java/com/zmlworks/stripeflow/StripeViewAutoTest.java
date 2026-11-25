@@ -21,7 +21,7 @@ public class StripeViewAutoTest {
         int width = 12;
         StripeView v = view();
         long seed = 7L;
-        v.configure(width, 300f, Prefs.DIR_UP_LEFT, false, 90f, Prefs.ROT_CCW, false, seed, true);
+        v.configure(width, 300f, Prefs.DIR_UP_LEFT, false, 90f, Prefs.ROT_CCW, false, seed, true, StripePattern.SCHEME_BW);
 
         long dtNs = 1_000_000_000L / 60L;
         float dt = 1f / 60f;
@@ -58,7 +58,7 @@ public class StripeViewAutoTest {
 
     @Test public void autoModeHonoursChosenWidth() {
         StripeView v = view();
-        v.configure(3, 0f, Prefs.DIR_DOWN_RIGHT, true, 0f, Prefs.ROT_CW, true, 1L, true);
+        v.configure(3, 0f, Prefs.DIR_DOWN_RIGHT, true, 0f, Prefs.ROT_CW, true, 1L, true, StripePattern.SCHEME_BW);
         v.setElapsedNanos(0L);
         // period 6: at the pivot with offset 0 the first three pixels along the
         // normal are black, the next three white. Vertical at angle 0 is easier.
@@ -84,7 +84,7 @@ public class StripeViewAutoTest {
 
     @Test public void turningAutoOffRestoresManualConstantSpeed() {
         StripeView v = view();
-        v.configure(4, 10f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false);
+        v.configure(4, 10f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false, StripePattern.SCHEME_BW);
         v.setElapsedNanos(2_000_000_000L);
         float per = StripePattern.period(4);
         assertEquals(StripePattern.wrap(-20f, per), v.offset(), 1e-4f);

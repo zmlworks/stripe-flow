@@ -19,11 +19,13 @@ final class Prefs {
     static final String WANDER = "wander_pivot";
     static final String AUTO = "auto_drift";
     static final String AUTO_WIDTH = "auto_stripe_width";
+    static final String COLOR = "color_scheme";
 
     static final int SPEED_MIN = 0, SPEED_MAX = 300, SPEED_DEFAULT = 3;
     static final int WIDTH_MIN = 1, WIDTH_MAX = 64, WIDTH_DEFAULT = 1, AUTO_WIDTH_DEFAULT = 8;
     /** +1 = against the normal, -1 = along the normal (down-right at the starting 45°). */
     static final int DIR_DOWN_RIGHT = -1, DIR_UP_LEFT = 1, DIR_DEFAULT = DIR_DOWN_RIGHT;
+    static final int COLOR_BW = StripePattern.SCHEME_BW, COLOR_GM = StripePattern.SCHEME_GM, COLOR_DEFAULT = COLOR_BW;
     static final float BRIGHT_DEFAULT = 1f;
     static final float ROT_MIN = 0f, ROT_MAX = 90f, ROT_DEFAULT = 0.5f;
     /** +1 = clockwise on screen (y down), -1 = counterclockwise. */
@@ -130,6 +132,15 @@ final class Prefs {
 
     static void setAutoWidth(Context c, int v) {
         sp(c).edit().putInt(AUTO_WIDTH, clamp(v, WIDTH_MIN, WIDTH_MAX)).apply();
+    }
+
+    static int colorScheme(Context c) {
+        int v = sp(c).getInt(COLOR, COLOR_DEFAULT);
+        return v == COLOR_GM ? COLOR_GM : COLOR_BW;
+    }
+
+    static void setColorScheme(Context c, int v) {
+        sp(c).edit().putInt(COLOR, v == COLOR_GM ? COLOR_GM : COLOR_BW).apply();
     }
 
     static int clamp(int v, int lo, int hi) {

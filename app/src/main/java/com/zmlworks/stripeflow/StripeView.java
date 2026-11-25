@@ -32,6 +32,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     private int rotDir = Prefs.ROT_DIR_DEFAULT;
     private boolean wander;
     private boolean auto;
+    private int colorScheme = StripePattern.SCHEME_BW;
     private long wanderSeed = 1L;
     private long startNanos;
     private boolean running;
@@ -57,18 +58,22 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         boolean auto = Prefs.autoDrift(c);
         if (auto) {
             configure(Prefs.autoWidth(c), 0f, Prefs.DIR_DEFAULT,
-                    true, 0f, Prefs.ROT_CW, true, System.nanoTime(), true);
+                    true, 0f, Prefs.ROT_CW, true, System.nanoTime(), true,
+                    Prefs.colorScheme(c));
         } else {
             configure(Prefs.width(c), Prefs.speed(c), Prefs.direction(c),
                     Prefs.rotate(c), Prefs.rotateSpeed(c), Prefs.rotateDir(c),
-                    Prefs.wander(c), System.nanoTime(), false);
+                    Prefs.wander(c), System.nanoTime(), false,
+                    Prefs.colorScheme(c));
         }
     }
 
     void configure(int width, float speedPxPerSec, int direction,
                    boolean rotate, float rotDegPerSec, int rotDir,
-                   boolean wander, long wanderSeed, boolean auto) {
+                   boolean wander, long wanderSeed, boolean auto, int colorScheme) {
         this.auto = auto;
+        this.colorScheme = colorScheme == StripePattern.SCHEME_GM
+                ? StripePattern.SCHEME_GM : StripePattern.SCHEME_BW;
         this.stripeWidth = Prefs.clamp(width, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
         this.speed = speedPxPerSec;
         this.direction = direction >= 0 ? 1 : -1;
@@ -78,7 +83,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         this.wander = wander || auto;
         this.wanderSeed = wanderSeed;
         if (tile != null) tile.recycle();
-        tile = StripePattern.tile(this.stripeWidth);
+        tile = StripePattern.tile(this.stripeWidth, this.colorScheme);
         shader = new BitmapShader(tile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT);
         paint.setShader(shader);
         havePivot = false;

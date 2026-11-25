@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">流れ縞</string>
-    <string name="subtitle">画面全体に、黒と白の斜め縞を流して表示します</string>
+    <string name="app_name">視覚増強器</string>
+    <string name="subtitle">画面全体に、斜め縞を流して表示します</string>
     <string name="brightness">画面の明るさ</string>
     <string name="brightness_system">端末の明るさに合わせる</string>
     <string name="brightness_value">%d%%</string>
@@ -24,6 +24,9 @@
     <string name="wander_hint">軸は画面の中央付近から、画面の中をゆっくり動きます</string>
     <string name="auto_drift">ゆっくりランダムに変化</string>
     <string name="auto_hint">速さは -20 から 20 px/秒、回転は -5 から 5 °/秒の範囲で、ゼロ付近はすばやく通り、外側寄りを長めに、軸も含めて数十秒かけて変わります。</string>
+    <string name="color">色</string>
+    <string name="color_bw">白黒</string>
+    <string name="color_gm">緑とマゼンタ</string>
     <string name="start">開始</string>
     <string name="touch_hint">全画面表示中に画面をタッチすると、この設定に戻ります</string>
 </resources>

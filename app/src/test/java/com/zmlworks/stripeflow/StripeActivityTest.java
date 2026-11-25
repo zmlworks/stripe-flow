@@ -3,6 +3,7 @@ package com.zmlworks.stripeflow;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import android.content.pm.ActivityInfo;
 import android.view.MotionEvent;
 import android.view.WindowManager;
 
@@ -25,6 +26,16 @@ public class StripeActivityTest {
         a.dispatchTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 12f, 20f, 0));
         assertTrue(a.isFinishing());
     }
+
+    @Test public void stripeScreenLocksOrientationAndSettingsDoesNot() {
+        StripeActivity stripe = Robolectric.buildActivity(StripeActivity.class).setup().get();
+        org.junit.Assert.assertEquals(ActivityInfo.SCREEN_ORIENTATION_LOCKED,
+                stripe.getRequestedOrientation());
+        SettingsActivity settings = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        org.junit.Assert.assertNotEquals(ActivityInfo.SCREEN_ORIENTATION_LOCKED,
+                settings.getRequestedOrientation());
+    }
+
 
     @Test public void windowUsesCustomBrightness() {
         android.content.Context app = RuntimeEnvironment.getApplication();

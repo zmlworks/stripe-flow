@@ -172,4 +172,25 @@ public class StripePatternTest {
         b.getPixels(pb, 0, b.getWidth(), 0, 0, b.getWidth(), b.getHeight());
         for (int i = 0; i < n; i++) assertEquals("i=" + i, pa[i], pb[i]);
     }
+
+    @Test public void greenMagentaUsesPureColours() {
+        assertEquals(0xFF00FF00, StripePattern.GREEN);
+        assertEquals(0xFFFF00FF, StripePattern.MAGENTA);
+        assertEquals(StripePattern.GREEN, StripePattern.colorFromPhase(0f, 8, StripePattern.SCHEME_GM));
+        assertEquals(StripePattern.MAGENTA, StripePattern.colorFromPhase(8f, 8, StripePattern.SCHEME_GM));
+        int[] px = new int[16 * 16];
+        android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(16, 16, android.graphics.Bitmap.Config.ARGB_8888);
+        StripePattern.render(bmp, 4, 0, 0, 0f, 0f, StripePattern.SCHEME_GM);
+        bmp.getPixels(px, 0, 16, 0, 0, 16, 16);
+        int green = 0, magenta = 0;
+        for (int c : px) {
+            assertTrue(c == StripePattern.GREEN || c == StripePattern.MAGENTA);
+            if (c == StripePattern.GREEN) green++;
+            else magenta++;
+        }
+        assertTrue(green > 0 && magenta > 0);
+        // Default scheme stays black/white.
+        assertEquals(Color.BLACK, StripePattern.colorFromPhase(0f, 8));
+        assertEquals(Color.WHITE, StripePattern.colorFromPhase(8f, 8));
+    }
 }
