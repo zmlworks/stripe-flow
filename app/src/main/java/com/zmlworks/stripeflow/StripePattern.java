@@ -134,6 +134,49 @@ final class StripePattern {
         return lerpArgb(colorB, colorA, g / 255f);
     }
 
+    /** sRGB component 0..1 to linear light. */
+    static float srgbToLinear(float c) {
+        if (c <= 0f) return 0f;
+        if (c >= 1f) return 1f;
+        return c <= 0.04045f ? c / 12.92f : (float) Math.pow((c + 0.055f) / 1.055f, 2.4);
+    }
+
+    /** Linear light 0..1 to sRGB component. */
+    static float linearToSrgb(float c) {
+        if (c <= 0f) return 0f;
+        if (c >= 1f) return 1f;
+        return c <= 0.0031308f ? 12.92f * c
+                : (float) (1.055 * Math.pow(c, 1.0 / 2.4) - 0.055);
+    }
+
+    static float hueDelta(float a, float b) {
+        float d = Math.abs(wrapHue(a) - wrapHue(b));
+        return Math.min(d, 360f - d);
+    }
+
+    /**
+     * Perceived average of colour A and colour B, weighted by their band
+     * widths, mixed in linear light and written back to sRGB. Equal widths
+     * of black and white yield about {@code #BCBCBC}.
+     */
+    static int perceivedMix(int colorA, int colorB, float widthA, float widthB) {
+        float a = widthA > 0f ? widthA : 0f;
+        float b = widthB > 0f ? widthB : 0f;
+        float p = a + b;
+        if (p <= 0f) { a = 1f; b = 1f; p = 2f; }
+        float wa = a / p, wb = b / p;
+        int r = chan(colorA, 16, colorB, wa, wb);
+        int g = chan(colorA, 8, colorB, wa, wb);
+        int bl = chan(colorA, 0, colorB, wa, wb);
+        return 0xFF000000 | (r << 16) | (g << 8) | bl;
+    }
+
+    private static int chan(int cA, int shift, int cB, float wa, float wb) {
+        float la = srgbToLinear(((cA >> shift) & 0xff) / 255f);
+        float lb = srgbToLinear(((cB >> shift) & 0xff) / 255f);
+        return Math.round(linearToSrgb(wa * la + wb * lb) * 255f);
+    }
+
     static int lerpArgb(int c0, int c1, float t) {
         if (t <= 0f) return c0;
         if (t >= 1f) return c1;

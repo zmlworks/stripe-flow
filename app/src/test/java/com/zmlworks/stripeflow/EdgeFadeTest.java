@@ -18,66 +18,60 @@ import org.robolectric.annotation.GraphicsMode;
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class EdgeFadeTest {
 
-    @Test public void alphaIsOpaqueAtTheBorderAndClearInside() {
-        int w = 200, h = 100;
-        float r = 20f;
-        assertEquals(1f, EdgeFade.alpha(0f, 50f, w, h, r), 1e-5f);
-        assertEquals(1f, EdgeFade.alpha(100f, 0f, w, h, r), 1e-5f);
-        assertEquals(0f, EdgeFade.alpha(100f, 50f, w, h, r), 1e-5f);
-        assertEquals(0f, EdgeFade.alpha(20f, 50f, w, h, r), 1e-5f);
-        float mid = EdgeFade.alpha(10f, 50f, w, h, r);
-        assertTrue("half-radius should be between, got " + mid, mid > 0.4f && mid < 0.6f);
-        assertEquals(0f, EdgeFade.alpha(100f, 50f, w, h, 0f), 0f);
+    @Test public void squareCornersMatchTheStraightEdgeDistance() {
+        int w = 200, h = 100, blur = 20;
+        assertEquals(1f, EdgeFade.alpha(0f, 50f, w, h, blur, 0, 0, 0, 0), 1e-5f);
+        assertEquals(0f, EdgeFade.alpha(100f, 50f, w, h, blur, 0, 0, 0, 0), 1e-5f);
+        assertEquals(0f, EdgeFade.alpha(20f, 50f, w, h, blur, 0, 0, 0, 0), 1e-5f);
+        float mid = EdgeFade.alpha(10f, 50f, w, h, blur, 0, 0, 0, 0);
+        assertTrue("half-blur should be between, got " + mid, mid > 0.4f && mid < 0.6f);
+        assertEquals(EdgeFade.distToRoundedEdge(10f, 50f, w, h, 0, 0, 0, 0), 10f, 1e-5f);
     }
 
-    @Test public void radiusIsClampedToHalfTheShorterSide() {
-        assertEquals(0, EdgeFade.clampedRadius(16, 0, 100));
-        assertEquals(0, EdgeFade.clampedRadius(-4, 200, 100));
-        assertEquals(50, EdgeFade.clampedRadius(80, 200, 100));
-        assertEquals(40, EdgeFade.clampedRadius(40, 200, 100));
+    @Test public void roundedCornerIsOpaqueOutsideTheQuarterCircle() {
+        int w = 200, h = 200, r = 40, blur = 20;
+        // The far cut-off of the top-left corner is outside the screen.
+        float outside = EdgeFade.distToRoundedEdge(0.5f, 0.5f, w, h, r, r, r, r);
+        assertTrue("outside should be negative, d=" + outside, outside < 0f);
+        assertEquals(1f, EdgeFade.alpha(0.5f, 0.5f, w, h, blur, r, r, r, r), 1e-5f);
+        // Mid-arc of the quarter circle (45°): on the physical edge.
+        float on = r - r / (float) Math.sqrt(2.0);
+        float dEdge = EdgeFade.distToRoundedEdge(on, on, w, h, r, r, r, r);
+        assertEquals(0f, dEdge, 0.02f);
+        assertEquals(1f, EdgeFade.alpha(on, on, w, h, blur, r, r, r, r), 1e-4f);
+        // Inward along 45° by the blur width: almost clear.
+        float inward = on + blur / (float) Math.sqrt(2.0);
+        float dIn = EdgeFade.distToRoundedEdge(inward, inward, w, h, r, r, r, r);
+        assertEquals(blur, dIn, 0.05f);
+        assertEquals(0f, EdgeFade.alpha(inward, inward, w, h, blur, r, r, r, r), 1e-4f);
+        // Along the top straight edge, past the corner radius, still a linear inset.
+        assertEquals(8f, EdgeFade.distToRoundedEdge(r + 10f, 8f, w, h, r, r, r, r), 1e-5f);
     }
 
-    @Test public void rampAndCornerShareTheSameFalloff() {
-        int r = 16;
-        Bitmap ramp = EdgeFade.makeRamp(r);
-        Bitmap corner = EdgeFade.makeCorner(r);
-        assertEquals(1, ramp.getWidth());
-        assertEquals(r, ramp.getHeight());
-        assertEquals(r, corner.getWidth());
-        int outer = (ramp.getPixel(0, 0) >>> 24) & 0xff;
-        int inner = (ramp.getPixel(0, r - 1) >>> 24) & 0xff;
-        assertTrue(outer > 200);
-        assertTrue(inner < 40);
-        // The first row of the corner is on the top edge, so every pixel
-        // matches the first ramp sample (distance 0.5 px).
-        int expected = ramp.getPixel(0, 0);
-        for (int x = 0; x < r; x++) {
-            assertEquals("x=" + x, expected, corner.getPixel(x, 0));
-            assertEquals(corner.getPixel(x, 0), corner.getPixel(0, x));
-        }
-        int centre = (corner.getPixel(r - 1, r - 1) >>> 24) & 0xff;
-        assertTrue(centre < 40);
+    @Test public void blurAndCornerRadiiAreClamped() {
+        assertEquals(0, EdgeFade.clampBlur(16, 0, 100));
+        assertEquals(50, EdgeFade.clampBlur(80, 200, 100));
+        assertEquals(0, EdgeFade.clampCorner(-4, 200, 100));
+        assertEquals(50, EdgeFade.clampCorner(80, 200, 100));
+        assertEquals(40, EdgeFade.clampCorner(40, 200, 100));
     }
 
-    @Test public void overlayLeavesTheCentreUntouchedAndDarkensTheEdges() {
-        int s = 120, r = 24;
+    @Test public void maskCoversTheRoundedCornerAndLeavesTheCentreClear() {
+        int s = 160, r = 32, blur = 24;
+        int mix = StripePattern.perceivedMix(Color.WHITE, Color.BLACK, 8, 8);
         Bitmap bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
         bmp.eraseColor(Color.WHITE);
         EdgeFade fade = new EdgeFade();
-        fade.ensure(s, s, r);
-        Canvas c = new Canvas(bmp);
-        fade.draw(c);
-        int mid = bmp.getPixel(s / 2, s / 2);
-        int edge = bmp.getPixel(0, s / 2);
+        fade.ensure(s, s, blur, r, r, r, r);
+        fade.setColor(mix);
+        fade.draw(new Canvas(bmp));
+        assertEquals(Color.WHITE, bmp.getPixel(s / 2, s / 2) | 0);
+        // The very corner is fully the mix colour (no stripe peeking).
         int corner = bmp.getPixel(0, 0);
-        assertEquals(Color.WHITE, mid);
-        int edgeA = (edge >>> 24) & 0xff;
-        // Drawn as premultiplied-ish SRC_OVER black; the RGB of the edge
-        // should be darker than white.
-        int edgeR = (edge >> 16) & 0xff;
-        int cornerR = (corner >> 16) & 0xff;
-        assertTrue("edge should darken, rgb=" + edgeR, edgeR < 40);
-        assertTrue("corner should darken, rgb=" + cornerR, cornerR < 40);
-        assertTrue(edgeA > 0 || edgeR < 255);
+        assertTrue(Math.abs(((mix >> 16) & 0xff) - ((corner >> 16) & 0xff)) <= 2);
+        assertTrue(Math.abs(((mix >> 8) & 0xff) - ((corner >> 8) & 0xff)) <= 2);
+        // Mid top edge is also close to the mix (almost opaque at 0.5 px).
+        int edge = bmp.getPixel(s / 2, 0);
+        assertTrue(Math.abs(((mix >> 16) & 0xff) - ((edge >> 16) & 0xff)) <= 8);
     }
 }

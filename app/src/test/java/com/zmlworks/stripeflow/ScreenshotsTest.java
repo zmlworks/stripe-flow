@@ -297,11 +297,13 @@ public class ScreenshotsTest {
         }
         // Off shot has about 22 px per period along x at 45°, so ~11 crossings.
         assertTrue("AA period looks wrong, transitions=" + trans, trans >= 18 && trans <= 28);
-        // Edge fade leaves the centre as a hard stripe and darkens the border.
+        // Edge fade leaves the centre as a hard stripe and covers the border
+        // with the perceived mix (~#BCBCBC for equal black and white).
         int mid = blur.getPixel(s / 2, s / 2);
         assertTrue(mid == Color.BLACK || mid == Color.WHITE);
+        int mix = StripePattern.perceivedMix(Color.WHITE, Color.BLACK, 8, 8);
         int edge = blur.getPixel(0, s / 2);
-        assertTrue(((edge >> 16) & 0xff) < 80);
+        assertTrue(Math.abs(((mix >> 16) & 0xff) - ((edge >> 16) & 0xff)) <= 8);
         Bitmap row = Bitmap.createBitmap(s * 3, s, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(row);
         c.drawBitmap(off, 0, 0, null);
@@ -311,6 +313,29 @@ public class ScreenshotsTest {
         save(crop(off, 80, 80, 96, 96), "compare-off-detail.png");
         save(crop(aa, 80, 80, 96, 96), "compare-aa-detail.png");
         save(crop(blur, 0, 0, 96, 96), "compare-blur-corner.png");
+    }
+
+    @Test public void roundedGreyVignette() throws Exception {
+        int s = 320, r = 56, blur = 48;
+        StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
+        v.configure(8, 8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false,
+                StripePattern.SCHEME_BW, 1f, 0f, false, blur);
+        v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, s, s);
+        v.setCornerRadii(r, r, r, r);
+        v.setState(StripePattern.BASE_ANGLE_RAD, s / 2f, s / 2f, 0.25f);
+        Bitmap bmp = drawView(v);
+        int mix = StripePattern.perceivedMix(Color.WHITE, Color.BLACK, 8, 8);
+        int corner = bmp.getPixel(0, 0);
+        assertTrue(Math.abs(((mix >> 16) & 0xff) - ((corner >> 16) & 0xff)) <= 2);
+        // A pixel clearly outside the quarter circle stays the mix colour.
+        int peek = bmp.getPixel(4, 4);
+        assertTrue(Math.abs(((mix >> 16) & 0xff) - ((peek >> 16) & 0xff)) <= 2);
+        int centre = bmp.getPixel(s / 2, s / 2);
+        assertTrue(centre == Color.BLACK || centre == Color.WHITE);
+        save(bmp, "vignette-grey-round.png");
+        save(crop(bmp, 0, 0, 120, 120), "vignette-grey-round-corner.png");
     }
 
     static Bitmap stripeShot(int s, boolean aa, int edgeBlur) {

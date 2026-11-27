@@ -286,4 +286,47 @@ public class StripePatternTest {
         assertTrue(g > 120 && g < 140);
     }
 
+
+    @Test public void perceivedMixOfEqualBlackAndWhiteIsAboutBcbcbc() {
+        int mix = StripePattern.perceivedMix(Color.WHITE, Color.BLACK, 1, 1);
+        int g = mix & 0xff;
+        assertEquals(g, (mix >> 8) & 0xff);
+        assertEquals(g, (mix >> 16) & 0xff);
+        assertEquals(0xFFBCBCBC, mix);
+        assertEquals(mix, StripePattern.perceivedMix(Color.WHITE, Color.BLACK, 8, 8));
+        // Unequal widths lean toward the wider band, still in linear light.
+        int light = StripePattern.perceivedMix(Color.WHITE, Color.BLACK, 3, 1);
+        int dark = StripePattern.perceivedMix(Color.WHITE, Color.BLACK, 1, 3);
+        assertTrue((light & 0xff) > g);
+        assertTrue((dark & 0xff) < g);
+        assertTrue((light & 0xff) > (dark & 0xff));
+    }
+
+    @Test public void perceivedMixUsesLinearLightPerChannel() {
+        // A mid sRGB grey mixed equally with black in linear light is not
+        // #404040 (the naive 8-bit average).
+        int mid = 0xFF808080;
+        int mixed = StripePattern.perceivedMix(mid, Color.BLACK, 1, 1);
+        int g = mixed & 0xff;
+        assertTrue("linear mix of #808080 and black should differ from 64, got " + g, g != 0x40);
+        assertTrue(g > 0 && g < 0x80);
+        assertEquals(g, StripePattern.perceivedMix(Color.BLACK, mid, 1, 1) & 0xff);
+        // Complementary pair at equal width should sit on the mid grey of the
+        // two linear colours (not required to be #BCBCBC, which is B/W only).
+        int a = StripePattern.colorAtHue(120f);
+        int b = StripePattern.colorAtHue(300f);
+        int m = StripePattern.perceivedMix(a, b, 5, 5);
+        float lr = 0.5f * (StripePattern.srgbToLinear(((a >> 16) & 0xff) / 255f)
+                + StripePattern.srgbToLinear(((b >> 16) & 0xff) / 255f));
+        int expectR = Math.round(StripePattern.linearToSrgb(lr) * 255f);
+        assertEquals(expectR, (m >> 16) & 0xff);
+    }
+
+    @Test public void hueDeltaTakesTheShorterArc() {
+        assertEquals(0f, StripePattern.hueDelta(10f, 10f), 0f);
+        assertEquals(1f, StripePattern.hueDelta(10f, 11f), 1e-5f);
+        assertEquals(2f, StripePattern.hueDelta(1f, 359f), 1e-5f);
+        assertEquals(0f, StripePattern.hueDelta(0f, 360f), 1e-5f);
+    }
+
 }

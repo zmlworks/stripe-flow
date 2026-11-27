@@ -11,9 +11,14 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 
-/** Immersive full-screen stripes. Any touch finishes this activity and returns to settings. */
+/**
+ * Immersive full-screen stripes. A tap blacks the screen out (animation
+ * paused, the phone may time out and lock as usual). A second tap resumes
+ * the stripes. The back gesture or button returns to settings.
+ */
 public final class StripeActivity extends Activity {
     private StripeView view;
+    private boolean blackout;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -28,7 +33,9 @@ public final class StripeActivity extends Activity {
         w.setAttributes(lp);
         view = new StripeView(this);
         setContentView(view);
+        view.requestApplyInsets();
         hideSystemBars();
+        applyStripeWindowFlags();
     }
 
     @Override public void onWindowFocusChanged(boolean hasFocus) {
@@ -39,7 +46,9 @@ public final class StripeActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         hideSystemBars();
-        if (view != null) view.setRunning(true);
+        applyStripeWindowFlags();
+        if (view != null) view.requestApplyInsets();
+        if (view != null && !blackout) view.setRunning(true);
     }
 
     @Override protected void onPause() {
@@ -49,10 +58,54 @@ public final class StripeActivity extends Activity {
 
     @Override public boolean onTouchEvent(MotionEvent ev) {
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
-            finish();
+            if (blackout) exitBlackout();
+            else enterBlackout();
             return true;
         }
         return super.onTouchEvent(ev);
+    }
+
+    @Override public void onBackPressed() {
+        finish();
+    }
+
+    boolean blackout() { return blackout; }
+
+    private void enterBlackout() {
+        if (blackout) return;
+        blackout = true;
+        if (view != null) view.setBlackout(true);
+        applyStripeWindowFlags();
+    }
+
+    private void exitBlackout() {
+        if (!blackout) return;
+        blackout = false;
+        if (view != null) view.setBlackout(false);
+        applyStripeWindowFlags();
+        if (view != null) view.setRunning(true);
+        hideSystemBars();
+    }
+
+    /**
+     * In blackout, drop FLAG_KEEP_SCREEN_ON and any brightness override so the
+     * phone's normal timeout and lock apply. Restored while the stripes run.
+     */
+    private void applyStripeWindowFlags() {
+        Window w = getWindow();
+        if (w == null) return;
+        if (blackout) {
+            w.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            if (view != null) view.setKeepScreenOn(false);
+        } else {
+            w.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            if (view != null) view.setKeepScreenOn(true);
+        }
+        WindowManager.LayoutParams lp = w.getAttributes();
+        lp.screenBrightness = blackout
+                ? WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                : Prefs.windowBrightness(this);
+        w.setAttributes(lp);
     }
 
     @SuppressWarnings("deprecation")

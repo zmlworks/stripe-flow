@@ -10,6 +10,8 @@ import android.graphics.Paint;
 import android.graphics.Shader;
 import android.view.Choreographer;
 import android.view.View;
+import android.view.RoundedCorner;
+import android.view.WindowInsets;
 
 /**
  * Full-screen stripe field. A 1-D repeating tile is drawn with a BitmapShader
@@ -40,6 +42,10 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     private boolean antiAlias;
     private int edgeBlurPx;
     private final EdgeFade edgeFade = new EdgeFade();
+    private int cornerTl, cornerTr, cornerBr, cornerBl;
+    private boolean blackout;
+    private float lastFadeHue = Float.NaN;
+    private int lastFadeColor;
     private int[] maskPx, colorPx;
     private final float[] hsv = new float[3];
     private float lastHue = Float.NaN;
@@ -133,7 +139,9 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         pivotComp = 0f;
         lastHue = Float.NaN;
         resetAutoMotion();
+        lastFadeHue = Float.NaN;
         applyHueAt(0f);
+        if (colorScheme != StripePattern.SCHEME_COLOR) syncEdgeFadeColor(0f, true);
         applyPose(this.angle, Float.NaN, Float.NaN, this.offset);
     }
 
@@ -205,6 +213,10 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     boolean antiAlias() { return antiAlias; }
     int edgeBlurPx() { return edgeBlurPx; }
     boolean filterBitmap() { return paint.isFilterBitmap(); }
+    boolean blackout() { return blackout; }
+    boolean running() { return running; }
+    int fadeColor() { return edgeFade.color(); }
+    int cornerTl() { return cornerTl; }
 
     private void applyHueAt(float t) {
         if (colorScheme != StripePattern.SCHEME_COLOR) return;
@@ -223,6 +235,7 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
             colorPx[i] = StripePattern.mixColors(c1, c0, maskPx[i]);
         }
         tile.setPixels(colorPx, 0, tile.getWidth(), 0, 0, tile.getWidth(), tile.getHeight());
+        syncEdgeFadeColor(hueDeg, false);
     }
 
 
@@ -270,7 +283,66 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         if (shader != null) shader.setLocalMatrix(matrix);
     }
 
+    void setBlackout(boolean on) {
+        if (on == blackout) {
+            invalidate();
+            return;
+        }
+        blackout = on;
+        if (on) setRunning(false);
+        invalidate();
+    }
+
+    void setCornerRadii(int tl, int tr, int br, int bl) {
+        tl = Math.max(0, tl);
+        tr = Math.max(0, tr);
+        br = Math.max(0, br);
+        bl = Math.max(0, bl);
+        if (tl == cornerTl && tr == cornerTr && br == cornerBr && bl == cornerBl) return;
+        cornerTl = tl;
+        cornerTr = tr;
+        cornerBr = br;
+        cornerBl = bl;
+        invalidate();
+    }
+
+    void applyRoundedCorners(WindowInsets insets) {
+        if (insets == null || Build.VERSION.SDK_INT < 31) return;
+        setCornerRadii(
+                roundedRadius(insets, RoundedCorner.POSITION_TOP_LEFT),
+                roundedRadius(insets, RoundedCorner.POSITION_TOP_RIGHT),
+                roundedRadius(insets, RoundedCorner.POSITION_BOTTOM_RIGHT),
+                roundedRadius(insets, RoundedCorner.POSITION_BOTTOM_LEFT));
+    }
+
+    private static int roundedRadius(WindowInsets insets, int position) {
+        if (Build.VERSION.SDK_INT < 31) return 0;
+        RoundedCorner c = insets.getRoundedCorner(position);
+        return c == null ? 0 : Math.max(0, c.getRadius());
+    }
+
+    private void syncEdgeFadeColor(float hueDeg, boolean force) {
+        int colA, colB;
+        if (colorScheme == StripePattern.SCHEME_COLOR) {
+            if (!force && !Float.isNaN(lastFadeHue)
+                    && StripePattern.hueDelta(lastFadeHue, hueDeg) < 1f) {
+                return;
+            }
+            lastFadeHue = hueDeg;
+            colA = StripePattern.colorAtHue(hueDeg, hsv);
+            colB = StripePattern.colorAtHue(hueDeg + 180f, hsv);
+        } else {
+            colA = StripePattern.WHITE;
+            colB = StripePattern.BLACK;
+        }
+        int mix = StripePattern.perceivedMix(colA, colB, widthA, widthB);
+        if (!force && mix == lastFadeColor) return;
+        lastFadeColor = mix;
+        edgeFade.setColor(mix);
+    }
+
     void setRunning(boolean run) {
+        if (blackout) run = false;
         if (run == running) return;
         running = run;
         if (run) {
@@ -304,6 +376,11 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         havePivot = false;
     }
 
+    @Override public WindowInsets onApplyWindowInsets(WindowInsets insets) {
+        applyRoundedCorners(insets);
+        return super.onApplyWindowInsets(insets);
+    }
+
     @Override protected void onAttachedToWindow() {
         super.onAttachedToWindow();
         setRunning(true);
@@ -315,10 +392,15 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     }
 
     @Override protected void onDraw(Canvas c) {
+        if (blackout) {
+            c.drawColor(0xFF000000);
+            return;
+        }
         c.drawPaint(paint);
         if (edgeBlurPx > 0) {
             int vw = getWidth(), vh = getHeight();
-            edgeFade.ensure(vw, vh, edgeBlurPx);
+            edgeFade.ensure(vw, vh, edgeBlurPx, cornerTl, cornerTr, cornerBr, cornerBl);
+            if (edgeFade.color() == 0) syncEdgeFadeColor(Float.isNaN(lastHue) ? 0f : lastHue, true);
             edgeFade.draw(c);
         }
     }
