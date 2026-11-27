@@ -28,7 +28,7 @@ import org.robolectric.annotation.GraphicsMode;
 @Config(sdk = 35, qualifiers = "w360dp-h800dp-port-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class ScreenshotsTest {
-    static final int W = 1080, H = 3400;
+    static final int W = 1080, H = 4000;
     static final File DIR = new File("build/reports/screens");
 
     @Test public void settingsScreen() throws Exception {
@@ -78,6 +78,21 @@ public class ScreenshotsTest {
         Bitmap bmp = drawActivity(a);
         assertTrue(countColor(bmp, Ui.TEXT) > 100);
         save(bmp, "settings-color.png");
+        Prefs.sp(app).edit().clear().commit();
+    }
+
+    @Test public void settingsScreenAaAndEdgeBlur() throws Exception {
+        android.content.Context app = RuntimeEnvironment.getApplication();
+        Prefs.sp(app).edit().clear().commit();
+        Prefs.setWidthA(app, 3);
+        Prefs.setWidthB(app, 8);
+        Prefs.setAntiAlias(app, true);
+        Prefs.setEdgeBlur(app, true);
+        Prefs.setEdgeBlurWidth(app, 64);
+        Activity a = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        Bitmap bmp = drawActivity(a);
+        assertTrue(countColor(bmp, Ui.TEXT) > 100);
+        save(bmp, "settings-aa-blur.png");
         Prefs.sp(app).edit().clear().commit();
     }
 
@@ -257,6 +272,56 @@ public class ScreenshotsTest {
         b.getPixels(pb, 0, s, 0, 0, s, s);
         for (int j = 0; j < pa.length; j++) if (pa[j] != pb[j]) changed++;
         assertTrue("colour should wander over a cycle; changed=" + changed, changed > 1000);
+    }
+
+    @Test public void compareOffAaAndEdgeBlur() throws Exception {
+        int s = 256;
+        Bitmap off = stripeShot(s, false, 0);
+        Bitmap aa = stripeShot(s, true, 0);
+        Bitmap blur = stripeShot(s, false, 48);
+        assertOnlyBlackAndWhite(off);
+        // AA softens the 45° edges: there should be grey in-between pixels.
+        int greys = 0, n = s * s;
+        int[] px = new int[n];
+        aa.getPixels(px, 0, s, 0, 0, s, s);
+        for (int c : px) {
+            int r = (c >> 16) & 0xff, g = (c >> 8) & 0xff, b = c & 0xff;
+            if (!(c == Color.BLACK || c == Color.WHITE) && r == g && g == b) greys++;
+        }
+        assertTrue("AA should introduce grey edge pixels, got " + greys, greys > 50);
+        int trans = 0;
+        boolean wasLight = ((aa.getPixel(0, s / 2) >> 16) & 0xff) >= 128;
+        for (int x = 1; x < s; x++) {
+            boolean light = ((aa.getPixel(x, s / 2) >> 16) & 0xff) >= 128;
+            if (light != wasLight) { trans++; wasLight = light; }
+        }
+        // Off shot has about 22 px per period along x at 45°, so ~11 crossings.
+        assertTrue("AA period looks wrong, transitions=" + trans, trans >= 18 && trans <= 28);
+        // Edge fade leaves the centre as a hard stripe and darkens the border.
+        int mid = blur.getPixel(s / 2, s / 2);
+        assertTrue(mid == Color.BLACK || mid == Color.WHITE);
+        int edge = blur.getPixel(0, s / 2);
+        assertTrue(((edge >> 16) & 0xff) < 80);
+        Bitmap row = Bitmap.createBitmap(s * 3, s, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(row);
+        c.drawBitmap(off, 0, 0, null);
+        c.drawBitmap(aa, s, 0, null);
+        c.drawBitmap(blur, s * 2, 0, null);
+        save(row, "compare-off-aa-blur.png");
+        save(crop(off, 80, 80, 96, 96), "compare-off-detail.png");
+        save(crop(aa, 80, 80, 96, 96), "compare-aa-detail.png");
+        save(crop(blur, 0, 0, 96, 96), "compare-blur-corner.png");
+    }
+
+    static Bitmap stripeShot(int s, boolean aa, int edgeBlur) {
+        StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
+        v.configure(8, 8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false,
+                StripePattern.SCHEME_BW, 1f, 0f, aa, edgeBlur);
+        v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, s, s);
+        v.setState(StripePattern.BASE_ANGLE_RAD, s / 2f, s / 2f, 0.25f);
+        return drawView(v);
     }
 
     static Bitmap drawActivity(Activity a) {

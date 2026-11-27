@@ -18,10 +18,10 @@ import java.util.Locale;
 
 /** Launch screen: remember settings, then open the full-screen stripes. */
 public final class SettingsActivity extends Activity {
-    private TextView speedValue, widthAValue, widthBValue, brightValue, rotSpeedValue, autoHint, distValue, hueRateValue;
-    private SeekBar speedBar, widthABar, widthBBar, brightBar, rotSpeedBar, distBar, hueRateBar;
-    private CheckBox systemBright, rotate, wander, autoDrift;
-    private LinearLayout rotPanel, manualPanel, autoPanel, colorPanel;
+    private TextView speedValue, widthAValue, widthBValue, brightValue, rotSpeedValue, autoHint, distValue, hueRateValue, edgeBlurValue;
+    private SeekBar speedBar, widthABar, widthBBar, brightBar, rotSpeedBar, distBar, hueRateBar, edgeBlurBar;
+    private CheckBox systemBright, rotate, wander, autoDrift, antiAlias, edgeBlur;
+    private LinearLayout rotPanel, manualPanel, autoPanel, colorPanel, edgeBlurPanel;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -119,6 +119,48 @@ public final class SettingsActivity extends Activity {
             }
         });
         col.addView(widthPanel, lp());
+
+        antiAlias = new CheckBox(this);
+        antiAlias.setText(R.string.anti_alias);
+        antiAlias.setTextColor(Ui.TEXT);
+        antiAlias.setChecked(Prefs.antiAlias(this));
+        LinearLayout.LayoutParams aaLp = lp();
+        aaLp.topMargin = Ui.dp(this, 16);
+        col.addView(antiAlias, aaLp);
+        antiAlias.setOnCheckedChangeListener((v, on) -> Prefs.setAntiAlias(this, on));
+
+        edgeBlur = new CheckBox(this);
+        edgeBlur.setText(R.string.edge_blur);
+        edgeBlur.setTextColor(Ui.TEXT);
+        edgeBlur.setChecked(Prefs.edgeBlur(this));
+        LinearLayout.LayoutParams ebLp = lp();
+        ebLp.topMargin = Ui.dp(this, 12);
+        col.addView(edgeBlur, ebLp);
+        TextView edgeBlurHint = text(getString(R.string.edge_blur_hint), 13, Ui.DIM);
+        edgeBlurHint.setPadding(0, Ui.dp(this, 4), 0, 0);
+        col.addView(edgeBlurHint);
+        edgeBlurPanel = new LinearLayout(this);
+        edgeBlurPanel.setOrientation(LinearLayout.VERTICAL);
+        heading(edgeBlurPanel, R.string.edge_blur_width);
+        edgeBlurValue = text("", 14, Ui.DIM);
+        edgeBlurPanel.addView(edgeBlurValue);
+        edgeBlurBar = seek(Prefs.EDGE_BLUR_MAX - Prefs.EDGE_BLUR_MIN, 0);
+        edgeBlurPanel.addView(edgeBlurBar, lp());
+        edgeBlurBar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                int v = p + Prefs.EDGE_BLUR_MIN;
+                if (fromUser) Prefs.setEdgeBlurWidth(SettingsActivity.this, v);
+                edgeBlurValue.setText(getString(R.string.edge_blur_value, v));
+            }
+        });
+        int ebw = Prefs.edgeBlurWidth(this);
+        edgeBlurBar.setProgress(ebw - Prefs.EDGE_BLUR_MIN);
+        edgeBlurValue.setText(getString(R.string.edge_blur_value, ebw));
+        col.addView(edgeBlurPanel, lp());
+        edgeBlur.setOnCheckedChangeListener((v, on) -> {
+            Prefs.setEdgeBlur(this, on);
+            refreshEdgeBlur();
+        });
 
         heading(col, R.string.color);
         col.addView(radios(
@@ -247,6 +289,7 @@ public final class SettingsActivity extends Activity {
         refreshRotate();
         refreshAuto();
         refreshColor();
+        refreshEdgeBlur();
     }
 
     private void refreshBrightness() {
@@ -269,6 +312,10 @@ public final class SettingsActivity extends Activity {
     private void refreshColor() {
         boolean on = Prefs.colorScheme(this) == Prefs.COLOR_MODE;
         colorPanel.setVisibility(on ? View.VISIBLE : View.GONE);
+    }
+
+    private void refreshEdgeBlur() {
+        edgeBlurPanel.setVisibility(edgeBlur.isChecked() ? View.VISIBLE : View.GONE);
     }
 
     private void refreshDist(float scale) {

@@ -24,6 +24,9 @@ final class Prefs {
     static final String COLOR = "color_scheme";
     static final String DIST = "dist_scale";
     static final String HUE_RATE = "hue_rate_deg_s";
+    static final String AA = "anti_alias";
+    static final String EDGE_BLUR = "edge_blur";
+    static final String EDGE_BLUR_WIDTH = "edge_blur_width_px";
 
     static final int SPEED_MIN = 0, SPEED_MAX = 300, SPEED_DEFAULT = 3;
     static final int WIDTH_MIN = 1, WIDTH_MAX = 64, WIDTH_DEFAULT = 1, AUTO_WIDTH_DEFAULT = 8;
@@ -36,6 +39,7 @@ final class Prefs {
     static final float ROT_MIN = 0f, ROT_MAX = 90f, ROT_DEFAULT = 0.5f;
     /** +1 = clockwise on screen (y down), -1 = counterclockwise. */
     static final int ROT_CW = 1, ROT_CCW = -1, ROT_DIR_DEFAULT = ROT_CW;
+    static final int EDGE_BLUR_MIN = 0, EDGE_BLUR_MAX = 256, EDGE_BLUR_DEFAULT = 64;
 
     static SharedPreferences sp(Context c) {
         return c.getSharedPreferences("settings", Context.MODE_PRIVATE);
@@ -181,6 +185,31 @@ final class Prefs {
 
     static void setHueRate(Context c, float v) {
         sp(c).edit().putFloat(HUE_RATE, clampF(v, HUE_RATE_MIN, HUE_RATE_MAX)).apply();
+    }
+
+    static boolean antiAlias(Context c) {
+        return sp(c).getBoolean(AA, false);
+    }
+
+    static void setAntiAlias(Context c, boolean v) {
+        sp(c).edit().putBoolean(AA, v).apply();
+    }
+
+    static boolean edgeBlur(Context c) {
+        return sp(c).getBoolean(EDGE_BLUR, false);
+    }
+
+    static void setEdgeBlur(Context c, boolean v) {
+        sp(c).edit().putBoolean(EDGE_BLUR, v).apply();
+    }
+
+    /** Fade width of the screen-edge vignette, in device pixels. 0..256, default 64. */
+    static int edgeBlurWidth(Context c) {
+        return clamp(sp(c).getInt(EDGE_BLUR_WIDTH, EDGE_BLUR_DEFAULT), EDGE_BLUR_MIN, EDGE_BLUR_MAX);
+    }
+
+    static void setEdgeBlurWidth(Context c, int v) {
+        sp(c).edit().putInt(EDGE_BLUR_WIDTH, clamp(v, EDGE_BLUR_MIN, EDGE_BLUR_MAX)).apply();
     }
 
     static int clamp(int v, int lo, int hi) {

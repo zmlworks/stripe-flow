@@ -213,4 +213,77 @@ public class StripePatternTest {
             assertEquals(StripePattern.wrapHue(h + 180f), StripePattern.complementHue(h), 0.001f);
         }
     }
+
+    @Test public void hardTileStaysBlackAndWhite() {
+        Bitmap tile = StripePattern.tile(3, 5);
+        assertEquals(8, tile.getWidth());
+        assertEquals(8, tile.getHeight());
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                int c = tile.getPixel(x, y);
+                assertTrue(c == Color.BLACK || c == Color.WHITE);
+                assertEquals(StripePattern.colorFromPhase(x, 3, 5), c);
+            }
+        }
+    }
+
+    @Test public void aaTileHasAOnePixelRampAndSeamlessRepeat() {
+        int a = 3, b = 5;
+        float period = 8f;
+        float half = StripePattern.aaHalf(a, b);
+        assertEquals(0.5f, half, 0f);
+        assertEquals(0.5f, StripePattern.coverage(0f, a, b, half), 1e-5f);
+        assertEquals(0.5f, StripePattern.coverage(b, a, b, half), 1e-5f);
+        assertEquals(0.5f, StripePattern.coverage(period, a, b, half), 1e-5f);
+        assertEquals(0f, StripePattern.coverage(2.5f, a, b, half), 1e-5f);
+        assertEquals(1f, StripePattern.coverage(6.5f, a, b, half), 1e-5f);
+        // One period away is identical, including the wrap seam.
+        assertEquals(StripePattern.coverage(-0.2f, a, b, half),
+                StripePattern.coverage(period - 0.2f, a, b, half), 1e-5f);
+        Bitmap tile = StripePattern.tile(a, b, true);
+        assertEquals(Math.round(period), tile.getWidth());
+        assertEquals(StripePattern.AA_TILE_HEIGHT, tile.getHeight());
+        int tw = tile.getWidth();
+        int first = tile.getPixel(0, 0), last = tile.getPixel(tw - 1, 0);
+        // The wrap boundary sits at 0 / period. The first and last texels are
+        // the two halves of the 1 px ramp, so they are complementary greys.
+        float c0 = (first & 0xff) / 255f, c1 = (last & 0xff) / 255f;
+        assertEquals(c0 + c1, 1f, 4f / 255f);
+        assertTrue("first=" + c0, c0 > 0f && c0 < 0.5f);
+        assertTrue("last=" + c1, c1 > 0.5f && c1 < 1f);
+        int greys = 0;
+        for (int x = 0; x < tw; x++) {
+            assertEquals(tile.getPixel(x, 0), tile.getPixel(x, 1));
+            int c = tile.getPixel(x, 0);
+            if (c != Color.BLACK && c != Color.WHITE) greys++;
+        }
+        // Two boundaries, 1–2 intermediate texels each.
+        assertTrue("grey texels=" + greys, greys >= 2 && greys <= 8);
+    }
+
+    @Test public void aaTileAllowsFractionalWidths() {
+        float a = 3.25f, b = 5.5f;
+        float period = StripePattern.periodF(a, b);
+        assertEquals(8.75f, period, 0f);
+        Bitmap tile = StripePattern.tile(a, b, true);
+        assertEquals(Math.round(period), tile.getWidth());
+        float half = StripePattern.aaHalf(a, b);
+        assertEquals(0.5f, StripePattern.coverage(0f, a, b, half), 1e-5f);
+        assertEquals(0.5f, StripePattern.coverage(b, a, b, half), 1e-5f);
+        assertEquals(0f, StripePattern.coverage(b / 2f, a, b, half), 1e-5f);
+        int tw = tile.getWidth();
+        int first = tile.getPixel(0, 0), last = tile.getPixel(tw - 1, 0);
+        float c0 = (first & 0xff) / 255f, c1 = (last & 0xff) / 255f;
+        assertEquals(c0 + c1, 1f, 4f / 255f);
+    }
+
+    @Test public void mixColorsLerpsFromBToA() {
+        assertEquals(Color.BLACK, StripePattern.mixColors(Color.BLACK, Color.WHITE, 0xFF000000));
+        assertEquals(Color.WHITE, StripePattern.mixColors(Color.BLACK, Color.WHITE, 0xFFFFFFFF));
+        int mid = StripePattern.mixColors(Color.BLACK, Color.WHITE, 0xFF808080);
+        int g = mid & 0xff;
+        assertEquals(g, (mid >> 8) & 0xff);
+        assertTrue(g > 120 && g < 140);
+    }
+
 }

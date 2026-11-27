@@ -35,6 +35,11 @@
     <string name="hue_rate_fixed">固定</string>
     <string name="hue_rate_cycle_min">%s 分で一周</string>
     <string name="hue_rate_cycle_sec">%s 秒で一周</string>
+    <string name="anti_alias">アンチエイリアス</string>
+    <string name="edge_blur">枠をぼかす</string>
+    <string name="edge_blur_hint">画面の端を溶かします</string>
+    <string name="edge_blur_width">ぼかしの幅</string>
+    <string name="edge_blur_value">%d px</string>
     <string name="start">開始</string>
     <string name="touch_hint">全画面表示中に画面をタッチすると、この設定に戻ります</string>
 </resources>

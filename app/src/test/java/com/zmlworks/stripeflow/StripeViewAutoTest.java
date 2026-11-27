@@ -109,6 +109,20 @@ public class StripeViewAutoTest {
         assertEquals(Color.BLACK, StripePattern.colorFromPhase(v.offset(), 3, 5));
     }
 
+    @Test public void antiAliasSetsFilterAndSupersampledTile() {
+        StripeView v = view();
+        v.configure(3, 5, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false,
+                StripePattern.SCHEME_BW, 1f, 0f, true, 32);
+        assertTrue(v.antiAlias());
+        assertTrue(v.filterBitmap());
+        assertEquals(32, v.edgeBlurPx());
+        v.configure(3, 5, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false,
+                StripePattern.SCHEME_BW);
+        assertTrue(!v.antiAlias());
+        assertTrue(!v.filterBitmap());
+        assertEquals(0, v.edgeBlurPx());
+    }
+
     private static StripeView view() {
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
         int s = 256;
