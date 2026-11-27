@@ -18,35 +18,37 @@ public class StripePatternTest {
     static final float ANG45 = StripePattern.BASE_ANGLE_RAD;
     static final float ANG90 = (float) (Math.PI / 2.0);
 
-    @Test public void periodIsTwiceTheWidth() {
-        assertEquals(2, StripePattern.period(1));
-        assertEquals(4, StripePattern.period(2));
-        assertEquals(20, StripePattern.period(10));
-        assertEquals(128, StripePattern.period(64));
-        assertEquals(2, StripePattern.period(0));
+    @Test public void periodIsTheSumOfTheTwoWidths() {
+        assertEquals(2, StripePattern.period(1, 1));
+        assertEquals(4, StripePattern.period(2, 2));
+        assertEquals(20, StripePattern.period(10, 10));
+        assertEquals(128, StripePattern.period(64, 64));
+        assertEquals(2, StripePattern.period(0, 0));
+        assertEquals(8, StripePattern.period(3, 5));
+        assertEquals(9, StripePattern.period(8, 1));
     }
 
     @Test public void verticalStripesAtAngleZero() {
         // Normal along +x, pivot at origin: colour depends only on x + offset.
-        assertEquals(Color.BLACK, StripePattern.color(0, 0, 0, 0, ANG0, 0f, 1));
-        assertEquals(Color.WHITE, StripePattern.color(1, 0, 0, 0, ANG0, 0f, 1));
-        assertEquals(Color.BLACK, StripePattern.color(2, 5, 0, 0, ANG0, 0f, 1));
-        assertEquals(Color.BLACK, StripePattern.color(0, 9, 0, 0, ANG0, 0f, 1));
-        assertEquals(Color.BLACK, StripePattern.color(0, 0, 0, 0, ANG0, 0f, 4));
-        assertEquals(Color.BLACK, StripePattern.color(3, 0, 0, 0, ANG0, 0f, 4));
-        assertEquals(Color.WHITE, StripePattern.color(4, 0, 0, 0, ANG0, 0f, 4));
-        assertEquals(Color.WHITE, StripePattern.color(7, 0, 0, 0, ANG0, 0f, 4));
-        assertEquals(Color.BLACK, StripePattern.color(8, 0, 0, 0, ANG0, 0f, 4));
+        assertEquals(Color.BLACK, StripePattern.color(0, 0, 0, 0, ANG0, 0f, 1, 1));
+        assertEquals(Color.WHITE, StripePattern.color(1, 0, 0, 0, ANG0, 0f, 1, 1));
+        assertEquals(Color.BLACK, StripePattern.color(2, 5, 0, 0, ANG0, 0f, 1, 1));
+        assertEquals(Color.BLACK, StripePattern.color(0, 9, 0, 0, ANG0, 0f, 1, 1));
+        assertEquals(Color.BLACK, StripePattern.color(0, 0, 0, 0, ANG0, 0f, 4, 4));
+        assertEquals(Color.BLACK, StripePattern.color(3, 0, 0, 0, ANG0, 0f, 4, 4));
+        assertEquals(Color.WHITE, StripePattern.color(4, 0, 0, 0, ANG0, 0f, 4, 4));
+        assertEquals(Color.WHITE, StripePattern.color(7, 0, 0, 0, ANG0, 0f, 4, 4));
+        assertEquals(Color.BLACK, StripePattern.color(8, 0, 0, 0, ANG0, 0f, 4, 4));
     }
 
     @Test public void horizontalStripesAtAngle90() {
         // Independent of x, changes along y (width 8 so the band is unmistakable).
-        assertEquals(StripePattern.color(0, 0, 0, 0, ANG90, 0f, 8),
-                StripePattern.color(40, 0, 0, 0, ANG90, 0f, 8));
-        assertEquals(Color.BLACK, StripePattern.color(0, 0, 0, 0, ANG90, 0f, 8));
-        assertEquals(Color.BLACK, StripePattern.color(0, 7, 0, 0, ANG90, 0f, 8));
-        assertEquals(Color.WHITE, StripePattern.color(0, 8, 0, 0, ANG90, 0f, 8));
-        assertEquals(Color.WHITE, StripePattern.color(15, 8, 0, 0, ANG90, 0f, 8));
+        assertEquals(StripePattern.color(0, 0, 0, 0, ANG90, 0f, 8, 8),
+                StripePattern.color(40, 0, 0, 0, ANG90, 0f, 8, 8));
+        assertEquals(Color.BLACK, StripePattern.color(0, 0, 0, 0, ANG90, 0f, 8, 8));
+        assertEquals(Color.BLACK, StripePattern.color(0, 7, 0, 0, ANG90, 0f, 8, 8));
+        assertEquals(Color.WHITE, StripePattern.color(0, 8, 0, 0, ANG90, 0f, 8, 8));
+        assertEquals(Color.WHITE, StripePattern.color(15, 8, 0, 0, ANG90, 0f, 8, 8));
     }
 
     @Test public void onlyBlackAndWhiteAtManyAngles() {
@@ -55,7 +57,7 @@ public class StripePatternTest {
             for (float a : angles) {
                 for (int y = 0; y < 16; y++) {
                     for (int x = 0; x < 16; x++) {
-                        int c = StripePattern.color(x, y, 7.5f, 6f, a, 0.3f, w);
+                        int c = StripePattern.color(x, y, 7.5f, 6f, a, 0.3f, w, w);
                         assertTrue(c == Color.BLACK || c == Color.WHITE);
                     }
                 }
@@ -64,30 +66,30 @@ public class StripePatternTest {
     }
 
     @Test public void colourAtThePivotDependsOnlyOnOffset() {
-        int a = StripePattern.color(10, 20, 10, 20, ANG45, 0.4f, 3);
-        int b = StripePattern.color(10, 20, 10, 20, ANG0, 0.4f, 3);
-        int c = StripePattern.color(10, 20, 10, 20, 2.7f, 0.4f, 3);
+        int a = StripePattern.color(10, 20, 10, 20, ANG45, 0.4f, 3, 3);
+        int b = StripePattern.color(10, 20, 10, 20, ANG0, 0.4f, 3, 3);
+        int c = StripePattern.color(10, 20, 10, 20, 2.7f, 0.4f, 3, 3);
         assertEquals(a, b);
         assertEquals(a, c);
-        int flipped = StripePattern.color(10, 20, 10, 20, ANG45, 0.4f + 3f, 3);
+        int flipped = StripePattern.color(10, 20, 10, 20, ANG45, 0.4f + 3f, 3, 3);
         assertTrue(a != flipped);
     }
 
     @Test public void anglePlusTwoPiAndOffsetPlusPeriodAreIdentical() {
         Bitmap a = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
         Bitmap b = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888);
-        StripePattern.render(a, 5, 16, 16, 0.8f, 1.2f);
-        StripePattern.render(b, 5, 16, 16, 0.8f + (float) (2 * Math.PI), 1.2f + StripePattern.period(5));
+        StripePattern.render(a, 5, 5, 16, 16, 0.8f, 1.2f);
+        StripePattern.render(b, 5, 5, 16, 16, 0.8f + (float) (2 * Math.PI), 1.2f + StripePattern.period(5, 5));
         assertSamePixels(a, b);
     }
 
     @Test public void integerOffsetShiftsVerticalPatternByOne() {
         assertEquals(
-                StripePattern.color(0, 0, 0, 0, ANG0, 1f, 1),
-                StripePattern.color(1, 0, 0, 0, ANG0, 0f, 1));
+                StripePattern.color(0, 0, 0, 0, ANG0, 1f, 1, 1),
+                StripePattern.color(1, 0, 0, 0, ANG0, 0f, 1, 1));
         assertEquals(
-                StripePattern.color(3, 8, 0, 0, ANG0, 1f, 1),
-                StripePattern.color(4, 8, 0, 0, ANG0, 0f, 1));
+                StripePattern.color(3, 8, 0, 0, ANG0, 1f, 1, 1),
+                StripePattern.color(4, 8, 0, 0, ANG0, 0f, 1, 1));
     }
 
     @Test public void phaseIsContinuousWhenTheAngleChanges() {
@@ -111,8 +113,8 @@ public class StripePatternTest {
         float off2 = off + StripePattern.pivotCompDelta(p1x, p1y, p2x, p2y, ang);
         Bitmap a = Bitmap.createBitmap(40, 40, Bitmap.Config.ARGB_8888);
         Bitmap b = Bitmap.createBitmap(40, 40, Bitmap.Config.ARGB_8888);
-        StripePattern.render(a, w, p1x, p1y, ang, off);
-        StripePattern.render(b, w, p2x, p2y, ang, off2);
+        StripePattern.render(a, w, w, p1x, p1y, ang, off);
+        StripePattern.render(b, w, w, p2x, p2y, ang, off2);
         assertSamePixels(a, b);
     }
 
@@ -136,31 +138,51 @@ public class StripePatternTest {
                 prev[0] = p[0]; prev[1] = p[1];
             }
             float off = speed * t + comp;
-            int atPivot = StripePattern.color(p[0], p[1], p[0], p[1], ang, off, width);
-            int fromFlow = StripePattern.colorFromPhase(off, width);
+            int atPivot = StripePattern.color(p[0], p[1], p[0], p[1], ang, off, width, width);
+            int fromFlow = StripePattern.colorFromPhase(off, width, width);
             assertEquals("t=" + t, fromFlow, atPivot);
         }
     }
 
     @Test public void tileMatchesOneDimensionalBands() {
         for (int w = 1; w <= 16; w++) {
-            Bitmap tile = StripePattern.tile(w);
+            Bitmap tile = StripePattern.tile(w, w);
             assertEquals(Bitmap.DENSITY_NONE, tile.getDensity());
-            assertEquals(StripePattern.period(w), tile.getWidth());
+            assertEquals(StripePattern.period(w, w), tile.getWidth());
             for (int y = 0; y < tile.getHeight(); y++) {
                 for (int x = 0; x < tile.getWidth(); x++) {
-                    assertEquals(StripePattern.colorFromPhase(x, w), tile.getPixel(x, y));
+                    assertEquals(StripePattern.colorFromPhase(x, w, w), tile.getPixel(x, y));
                 }
             }
         }
     }
 
+    @Test public void unequalWidthsHaveTheExpectedBands() {
+        // Along +x at angle 0: [0, b) black, [b, a+b) white, then it repeats.
+        int a = 3, b = 5;
+        assertEquals(Color.BLACK, StripePattern.color(0, 0, 0, 0, ANG0, 0f, a, b));
+        assertEquals(Color.BLACK, StripePattern.color(4, 10, 0, 0, ANG0, 0f, a, b));
+        assertEquals(Color.WHITE, StripePattern.color(5, 0, 0, 0, ANG0, 0f, a, b));
+        assertEquals(Color.WHITE, StripePattern.color(7, 0, 0, 0, ANG0, 0f, a, b));
+        assertEquals(Color.BLACK, StripePattern.color(8, 0, 0, 0, ANG0, 0f, a, b));
+        Bitmap tile = StripePattern.tile(a, b);
+        assertEquals(8, tile.getWidth());
+        assertEquals(Color.BLACK, tile.getPixel(0, 3));
+        assertEquals(Color.BLACK, tile.getPixel(4, 3));
+        assertEquals(Color.WHITE, tile.getPixel(5, 3));
+        assertEquals(Color.WHITE, tile.getPixel(7, 3));
+        // Adding the period to the offset leaves the field unchanged.
+        assertEquals(
+                StripePattern.color(11, 2, 0, 0, ANG0, 0.4f, a, b),
+                StripePattern.color(11, 2, 0, 0, ANG0, 0.4f + StripePattern.period(a, b), a, b));
+    }
+
     @Test public void flowOffsetWrapsAndRespectsDirection() {
-        assertEquals(0f, StripePattern.flowOffset(0L, 3f, -1, 1), 0f);
-        assertEquals(1f, StripePattern.flowOffset(1_000_000_000L, 3f, -1, 1), 1e-5f);
+        assertEquals(0f, StripePattern.flowOffset(0L, 3f, -1, 1, 1), 0f);
+        assertEquals(1f, StripePattern.flowOffset(1_000_000_000L, 3f, -1, 1, 1), 1e-5f);
         long sixth = 1_000_000_000L / 6;
-        float a = StripePattern.flowOffset(sixth, 3f, 1, 1);
-        float b = StripePattern.flowOffset(sixth, 3f, -1, 1);
+        float a = StripePattern.flowOffset(sixth, 3f, 1, 1, 1);
+        float b = StripePattern.flowOffset(sixth, 3f, -1, 1, 1);
         assertEquals(0.5f, a, 1e-5f);
         assertEquals(1.5f, b, 1e-5f);
     }

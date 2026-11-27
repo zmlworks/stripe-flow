@@ -8,6 +8,8 @@
     <string name="speed">速さ</string>
     <string name="speed_value">%d px/秒</string>
     <string name="stripe_width">縞の幅</string>
+    <string name="width_a">白の幅（色 A）</string>
+    <string name="width_b">黒の幅（色 B）</string>
     <string name="width_value">%d px</string>
     <string name="direction">流れの向き</string>
     <string name="dir_down_right">順方向</string>

@@ -28,12 +28,14 @@ import org.robolectric.annotation.GraphicsMode;
 @Config(sdk = 35, qualifiers = "w360dp-h800dp-port-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class ScreenshotsTest {
-    static final int W = 1080, H = 3000;
+    static final int W = 1080, H = 3400;
     static final File DIR = new File("build/reports/screens");
 
     @Test public void settingsScreen() throws Exception {
         android.content.Context app = RuntimeEnvironment.getApplication();
         Prefs.sp(app).edit().clear().commit();
+        Prefs.setWidthA(app, 3);
+        Prefs.setWidthB(app, 8);
         Activity a = Robolectric.buildActivity(SettingsActivity.class).setup().get();
         Bitmap bmp = drawActivity(a);
         assertNotEquals(0, countColor(bmp, Ui.BG));
@@ -47,7 +49,8 @@ public class ScreenshotsTest {
         Prefs.setRotate(app, true);
         Prefs.setWander(app, true);
         Prefs.setRotateSpeed(app, 0.5f);
-        Prefs.setWidth(app, 8);
+        Prefs.setWidthA(app, 8);
+        Prefs.setWidthB(app, 8);
         Activity a = Robolectric.buildActivity(SettingsActivity.class).setup().get();
         Bitmap bmp = drawActivity(a);
         assertTrue(countColor(bmp, Ui.TEXT) > 100);
@@ -80,7 +83,7 @@ public class ScreenshotsTest {
 
     @Test public void stripeViewMatchesPointSamplingAndRotatesWithoutJumping() throws Exception {
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
-        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false, StripePattern.SCHEME_BW);
+        v.configure(8, 8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false, StripePattern.SCHEME_BW);
         int s = 256;
         v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
@@ -91,7 +94,7 @@ public class ScreenshotsTest {
         v.setState(a0, cx, cy, 0f);
         Bitmap view0 = drawView(v);
         Bitmap ref0 = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
-        StripePattern.render(ref0, 8, cx, cy, a0, 0f);
+        StripePattern.render(ref0, 8, 8, cx, cy, a0, 0f);
         assertOnlyBlackAndWhite(view0);
         // Shader and point sampling should agree on a solid 8 px field at 45°.
         assertEquals(ref0.getPixel(s / 2, s / 2), view0.getPixel(s / 2, s / 2));
@@ -103,7 +106,7 @@ public class ScreenshotsTest {
         Bitmap view1 = drawView(v);
         assertOnlyBlackAndWhite(view1);
         assertEquals(
-                StripePattern.color(cx, cy, cx, cy, a1, 0f, 8),
+                StripePattern.color(cx, cy, cx, cy, a1, 0f, 8, 8),
                 view1.getPixel(s / 2, s / 2));
         save(view1, "stripes-65-w8.png");
         save(crop(view1, 0, 0, 64, 64), "stripes-65-w8-detail.png");
@@ -126,10 +129,10 @@ public class ScreenshotsTest {
         Bitmap bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
         for (int i = 0; i < frames; i++) {
             float ang = start + (float) Math.toRadians(20) * (i / 15f);
-            StripePattern.render(bmp, width, cx, cy, ang, 0f);
+            StripePattern.render(bmp, width, width, cx, cy, ang, 0f);
             assertOnlyBlackAndWhite(bmp);
             // Pivot pixel stays the same colour when only the angle changes.
-            assertEquals(StripePattern.colorFromPhase(0f, width), bmp.getPixel(s / 2, s / 2));
+            assertEquals(StripePattern.colorFromPhase(0f, width, width), bmp.getPixel(s / 2, s / 2));
             save(bmp, String.format(Locale.US, "rot-frames/frame-%03d.png", i));
         }
     }
@@ -141,7 +144,7 @@ public class ScreenshotsTest {
         int s = 320;
         long seed = 7L;
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
-        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, true, 0f, Prefs.ROT_CW, true, seed, true, StripePattern.SCHEME_BW);
+        v.configure(8, 8, 0f, Prefs.DIR_DOWN_RIGHT, true, 0f, Prefs.ROT_CW, true, seed, true, StripePattern.SCHEME_BW);
         v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
         v.layout(0, 0, s, s);
@@ -177,7 +180,7 @@ public class ScreenshotsTest {
         int s = 256;
         long seed = 7L;
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
-        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, seed, false,
+        v.configure(8, 8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, seed, false,
                 StripePattern.SCHEME_COLOR, 1f, 0f);
         v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
@@ -218,7 +221,7 @@ public class ScreenshotsTest {
         float rate = HueDrift.RATE_DEFAULT;
         float span = 360f / rate;
         StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
-        v.configure(8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, seed, false,
+        v.configure(8, 8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, seed, false,
                 StripePattern.SCHEME_COLOR, 1f, rate);
         v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));

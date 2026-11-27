@@ -9,7 +9,8 @@ final class Prefs {
     private Prefs() {}
 
     static final String SPEED = "speed_px_s";
-    static final String WIDTH = "stripe_width";
+    static final String WIDTH_A = "stripe_width_a";
+    static final String WIDTH_B = "stripe_width_b";
     static final String DIR = "direction";
     static final String SYS_BRIGHT = "use_system_brightness";
     static final String BRIGHT = "brightness";
@@ -18,7 +19,8 @@ final class Prefs {
     static final String ROT_DIR = "rotate_dir";
     static final String WANDER = "wander_pivot";
     static final String AUTO = "auto_drift";
-    static final String AUTO_WIDTH = "auto_stripe_width";
+    static final String AUTO_WIDTH_A = "auto_stripe_width_a";
+    static final String AUTO_WIDTH_B = "auto_stripe_width_b";
     static final String COLOR = "color_scheme";
     static final String DIST = "dist_scale";
     static final String HUE_RATE = "hue_rate_deg_s";
@@ -47,13 +49,22 @@ final class Prefs {
         sp(c).edit().putInt(SPEED, clamp(v, SPEED_MIN, SPEED_MAX)).apply();
     }
 
-    /** Stripe thickness in physical pixels along the normal: 1..64. Older 1..10 stay valid. */
-    static int width(Context c) {
-        return clamp(sp(c).getInt(WIDTH, WIDTH_DEFAULT), WIDTH_MIN, WIDTH_MAX);
+    /** White (colour A) band thickness in physical pixels along the normal: 1..64. */
+    static int widthA(Context c) {
+        return clamp(sp(c).getInt(WIDTH_A, WIDTH_DEFAULT), WIDTH_MIN, WIDTH_MAX);
     }
 
-    static void setWidth(Context c, int v) {
-        sp(c).edit().putInt(WIDTH, clamp(v, WIDTH_MIN, WIDTH_MAX)).apply();
+    static void setWidthA(Context c, int v) {
+        sp(c).edit().putInt(WIDTH_A, clamp(v, WIDTH_MIN, WIDTH_MAX)).apply();
+    }
+
+    /** Black (colour B) band thickness in physical pixels along the normal: 1..64. */
+    static int widthB(Context c) {
+        return clamp(sp(c).getInt(WIDTH_B, WIDTH_DEFAULT), WIDTH_MIN, WIDTH_MAX);
+    }
+
+    static void setWidthB(Context c, int v) {
+        sp(c).edit().putInt(WIDTH_B, clamp(v, WIDTH_MIN, WIDTH_MAX)).apply();
     }
 
     static int direction(Context c) {
@@ -129,13 +140,22 @@ final class Prefs {
         sp(c).edit().putBoolean(AUTO, v).apply();
     }
 
-    /** Stripe width used in auto-drift mode. Default 8; independent of the manual width. */
-    static int autoWidth(Context c) {
-        return clamp(sp(c).getInt(AUTO_WIDTH, AUTO_WIDTH_DEFAULT), WIDTH_MIN, WIDTH_MAX);
+    /** Auto-drift white (colour A) width. Default 8; independent of the manual widths. */
+    static int autoWidthA(Context c) {
+        return clamp(sp(c).getInt(AUTO_WIDTH_A, AUTO_WIDTH_DEFAULT), WIDTH_MIN, WIDTH_MAX);
     }
 
-    static void setAutoWidth(Context c, int v) {
-        sp(c).edit().putInt(AUTO_WIDTH, clamp(v, WIDTH_MIN, WIDTH_MAX)).apply();
+    static void setAutoWidthA(Context c, int v) {
+        sp(c).edit().putInt(AUTO_WIDTH_A, clamp(v, WIDTH_MIN, WIDTH_MAX)).apply();
+    }
+
+    /** Auto-drift black (colour B) width. Default 8; independent of the manual widths. */
+    static int autoWidthB(Context c) {
+        return clamp(sp(c).getInt(AUTO_WIDTH_B, AUTO_WIDTH_DEFAULT), WIDTH_MIN, WIDTH_MAX);
+    }
+
+    static void setAutoWidthB(Context c, int v) {
+        sp(c).edit().putInt(AUTO_WIDTH_B, clamp(v, WIDTH_MIN, WIDTH_MAX)).apply();
     }
 
     static int colorScheme(Context c) {

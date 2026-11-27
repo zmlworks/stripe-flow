@@ -26,7 +26,8 @@ public class PrefsTest {
 
     @Test public void defaults() {
         assertEquals(3, Prefs.speed(c));
-        assertEquals(1, Prefs.width(c));
+        assertEquals(1, Prefs.widthA(c));
+        assertEquals(1, Prefs.widthB(c));
         assertEquals(Prefs.DIR_DOWN_RIGHT, Prefs.direction(c));
         assertTrue(Prefs.useSystemBrightness(c));
         assertEquals(1f, Prefs.brightness(c), 0f);
@@ -36,7 +37,8 @@ public class PrefsTest {
         assertEquals(Prefs.ROT_CW, Prefs.rotateDir(c));
         assertFalse(Prefs.wander(c));
         assertFalse(Prefs.autoDrift(c));
-        assertEquals(8, Prefs.autoWidth(c));
+        assertEquals(8, Prefs.autoWidthA(c));
+        assertEquals(8, Prefs.autoWidthB(c));
         assertEquals(Prefs.COLOR_BW, Prefs.colorScheme(c));
         assertEquals(1f, Prefs.distScale(c), 0f);
         assertEquals(2f, Prefs.hueRate(c), 0f);
@@ -44,7 +46,8 @@ public class PrefsTest {
 
     @Test public void roundTrip() {
         Prefs.setSpeed(c, 7);
-        Prefs.setWidth(c, 40);
+        Prefs.setWidthA(c, 40);
+        Prefs.setWidthB(c, 12);
         Prefs.setDirection(c, Prefs.DIR_UP_LEFT);
         Prefs.setUseSystemBrightness(c, false);
         Prefs.setBrightness(c, 0.4f);
@@ -53,12 +56,14 @@ public class PrefsTest {
         Prefs.setRotateDir(c, Prefs.ROT_CCW);
         Prefs.setWander(c, true);
         Prefs.setAutoDrift(c, true);
-        Prefs.setAutoWidth(c, 24);
+        Prefs.setAutoWidthA(c, 24);
+        Prefs.setAutoWidthB(c, 16);
         Prefs.setColorScheme(c, Prefs.COLOR_MODE);
         Prefs.setDistScale(c, 2.5f);
         Prefs.setHueRate(c, 0f);
         assertEquals(7, Prefs.speed(c));
-        assertEquals(40, Prefs.width(c));
+        assertEquals(40, Prefs.widthA(c));
+        assertEquals(12, Prefs.widthB(c));
         assertEquals(Prefs.DIR_UP_LEFT, Prefs.direction(c));
         assertFalse(Prefs.useSystemBrightness(c));
         assertEquals(0.4f, Prefs.brightness(c), 0.0001f);
@@ -67,28 +72,28 @@ public class PrefsTest {
         assertEquals(Prefs.ROT_CCW, Prefs.rotateDir(c));
         assertTrue(Prefs.wander(c));
         assertTrue(Prefs.autoDrift(c));
-        assertEquals(24, Prefs.autoWidth(c));
+        assertEquals(24, Prefs.autoWidthA(c));
+        assertEquals(16, Prefs.autoWidthB(c));
         assertEquals(Prefs.COLOR_MODE, Prefs.colorScheme(c));
         assertEquals(2.5f, Prefs.distScale(c), 0.0001f);
         assertEquals(0f, Prefs.hueRate(c), 0f);
     }
 
-    @Test public void clampsInvalidValuesAndKeepsOldWidths() {
+    @Test public void clampsInvalidValues() {
         Prefs.setSpeed(c, -1);
         assertEquals(Prefs.SPEED_MIN, Prefs.speed(c));
         Prefs.setSpeed(c, 0);
         assertEquals(0, Prefs.speed(c));
         Prefs.setSpeed(c, 999);
         assertEquals(Prefs.SPEED_MAX, Prefs.speed(c));
-        Prefs.setWidth(c, 0);
-        assertEquals(Prefs.WIDTH_MIN, Prefs.width(c));
-        Prefs.setWidth(c, 99);
-        assertEquals(Prefs.WIDTH_MAX, Prefs.width(c));
-        // Values stored by v0.1.x (1, 2 or up to 10) remain valid with no migration.
-        Prefs.sp(c).edit().putInt(Prefs.WIDTH, 2).commit();
-        assertEquals(2, Prefs.width(c));
-        Prefs.sp(c).edit().putInt(Prefs.WIDTH, 10).commit();
-        assertEquals(10, Prefs.width(c));
+        Prefs.setWidthA(c, 0);
+        assertEquals(Prefs.WIDTH_MIN, Prefs.widthA(c));
+        Prefs.setWidthA(c, 99);
+        assertEquals(Prefs.WIDTH_MAX, Prefs.widthA(c));
+        Prefs.setWidthB(c, 0);
+        assertEquals(Prefs.WIDTH_MIN, Prefs.widthB(c));
+        Prefs.setWidthB(c, 99);
+        assertEquals(Prefs.WIDTH_MAX, Prefs.widthB(c));
         Prefs.setBrightness(c, -0.5f);
         assertEquals(0f, Prefs.brightness(c), 0f);
         Prefs.setBrightness(c, 1.5f);
@@ -97,10 +102,14 @@ public class PrefsTest {
         assertEquals(0f, Prefs.rotateSpeed(c), 0f);
         Prefs.setRotateSpeed(c, 180f);
         assertEquals(90f, Prefs.rotateSpeed(c), 0f);
-        Prefs.setAutoWidth(c, 0);
-        assertEquals(Prefs.WIDTH_MIN, Prefs.autoWidth(c));
-        Prefs.setAutoWidth(c, 99);
-        assertEquals(Prefs.WIDTH_MAX, Prefs.autoWidth(c));
+        Prefs.setAutoWidthA(c, 0);
+        assertEquals(Prefs.WIDTH_MIN, Prefs.autoWidthA(c));
+        Prefs.setAutoWidthA(c, 99);
+        assertEquals(Prefs.WIDTH_MAX, Prefs.autoWidthA(c));
+        Prefs.setAutoWidthB(c, 0);
+        assertEquals(Prefs.WIDTH_MIN, Prefs.autoWidthB(c));
+        Prefs.setAutoWidthB(c, 99);
+        assertEquals(Prefs.WIDTH_MAX, Prefs.autoWidthB(c));
         Prefs.setDistScale(c, 0.01f);
         assertEquals(Prefs.DIST_MIN, Prefs.distScale(c), 0f);
         Prefs.setDistScale(c, 9f);
@@ -109,23 +118,34 @@ public class PrefsTest {
         assertEquals(0f, Prefs.hueRate(c), 0f);
         Prefs.setHueRate(c, 99f);
         assertEquals(Prefs.HUE_RATE_MAX, Prefs.hueRate(c), 0f);
-        Prefs.sp(c).edit().putInt(Prefs.SPEED, -3).putInt(Prefs.WIDTH, 0).putFloat(Prefs.BRIGHT, 9f).commit();
+        Prefs.sp(c).edit().putInt(Prefs.SPEED, -3)
+                .putInt(Prefs.WIDTH_A, 0).putInt(Prefs.WIDTH_B, 0)
+                .putFloat(Prefs.BRIGHT, 9f).commit();
         assertEquals(Prefs.SPEED_MIN, Prefs.speed(c));
-        assertEquals(1, Prefs.width(c));
+        assertEquals(1, Prefs.widthA(c));
+        assertEquals(1, Prefs.widthB(c));
         assertEquals(1f, Prefs.brightness(c), 0f);
     }
 
     @Test public void autoDriftDoesNotOverwriteWidth() {
-        Prefs.setWidth(c, 12);
+        Prefs.setWidthA(c, 12);
+        Prefs.setWidthB(c, 4);
         Prefs.setAutoDrift(c, true);
-        assertEquals(12, Prefs.width(c));
-        assertEquals(8, Prefs.autoWidth(c));
-        Prefs.setAutoWidth(c, 16);
-        assertEquals(12, Prefs.width(c));
-        assertEquals(16, Prefs.autoWidth(c));
+        assertEquals(12, Prefs.widthA(c));
+        assertEquals(4, Prefs.widthB(c));
+        assertEquals(8, Prefs.autoWidthA(c));
+        assertEquals(8, Prefs.autoWidthB(c));
+        Prefs.setAutoWidthA(c, 16);
+        Prefs.setAutoWidthB(c, 20);
+        assertEquals(12, Prefs.widthA(c));
+        assertEquals(4, Prefs.widthB(c));
+        assertEquals(16, Prefs.autoWidthA(c));
+        assertEquals(20, Prefs.autoWidthB(c));
         Prefs.setAutoDrift(c, false);
-        assertEquals(12, Prefs.width(c));
-        assertEquals(16, Prefs.autoWidth(c));
+        assertEquals(12, Prefs.widthA(c));
+        assertEquals(4, Prefs.widthB(c));
+        assertEquals(16, Prefs.autoWidthA(c));
+        assertEquals(20, Prefs.autoWidthB(c));
         assertFalse(Prefs.autoDrift(c));
     }
 

@@ -8,7 +8,8 @@ import android.graphics.Color;
  * the unit normal (cos θ, sin θ). The flow is the same axis, so it stays
  * perpendicular to the stripes as the angle changes.
  * Colour is point-sampled: every pixel is one of the two scheme colours.
- * The repeating period along the normal is 2 * width, so the loop is seamless.
+ * The white (colour A) and black (colour B) bands may have different widths.
+ * The repeating period along the normal is widthA + widthB.
  */
 final class StripePattern {
     private StripePattern() {}
@@ -23,8 +24,8 @@ final class StripePattern {
         return width < 1 ? 1 : width;
     }
 
-    static int period(int width) {
-        return 2 * normWidth(width);
+    static int period(int widthA, int widthB) {
+        return normWidth(widthA) + normWidth(widthB);
     }
 
     static float wrap(float value, float period) {
@@ -35,9 +36,9 @@ final class StripePattern {
     }
 
     /** Flow offset after {@code elapsedNanos}, wrapped to [0, period). */
-    static float flowOffset(long elapsedNanos, float speedPxPerSec, int direction, int width) {
+    static float flowOffset(long elapsedNanos, float speedPxPerSec, int direction, int widthA, int widthB) {
         float raw = (elapsedNanos / 1_000_000_000f) * speedPxPerSec * (direction >= 0 ? 1f : -1f);
-        return wrap(raw, period(width));
+        return wrap(raw, period(widthA, widthB));
     }
 
     static float phase(float x, float y, float px, float py, float angleRad, float offset) {
@@ -67,16 +68,19 @@ final class StripePattern {
         return colorAtHue(hueDeg, new float[3]);
     }
 
-    static int colorFromPhase(float phase, int width) {
-        int w = normWidth(width);
+    static int colorFromPhase(float phase, int widthA, int widthB) {
+        int a = normWidth(widthA), b = normWidth(widthB);
         // A sub-pixel bias absorbs -eps from sin/cos of 90°, which would
-        // otherwise floor a nearly-zero phase (e.g. x * cos(90°)) to -1.
-        int band = (int) Math.floor((phase + 1e-3) / (double) w);
-        return (band & 1) == 0 ? BLACK : WHITE;
+        // otherwise wrap a nearly-zero phase (e.g. x * cos(90°)) to the
+        // previous period. Within one period, [0, b) is black (colour B)
+        // and [b, a+b) is white (colour A).
+        float w = wrap(phase + 1e-3f, a + b);
+        return w < b ? BLACK : WHITE;
     }
 
-    static int color(float x, float y, float px, float py, float angleRad, float offset, int width) {
-        return colorFromPhase(phase(x, y, px, py, angleRad, offset), width);
+    static int color(float x, float y, float px, float py, float angleRad, float offset,
+                     int widthA, int widthB) {
+        return colorFromPhase(phase(x, y, px, py, angleRad, offset), widthA, widthB);
     }
 
     /**
@@ -93,25 +97,25 @@ final class StripePattern {
      * it so the bands are perpendicular to {@code angleRad}. Density is none,
      * so 1 bitmap pixel = 1 device pixel along the normal.
      */
-    static Bitmap tile(int width) {
-        int w = normWidth(width);
-        int n = period(w);
-        Bitmap b = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888);
-        b.setDensity(Bitmap.DENSITY_NONE);
+    static Bitmap tile(int widthA, int widthB) {
+        int a = normWidth(widthA), b = normWidth(widthB);
+        int n = period(a, b);
+        Bitmap bmp = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888);
+        bmp.setDensity(Bitmap.DENSITY_NONE);
         for (int y = 0; y < n; y++) {
             for (int x = 0; x < n; x++) {
-                b.setPixel(x, y, colorFromPhase(x, w));
+                bmp.setPixel(x, y, colorFromPhase(x, a, b));
             }
         }
-        return b;
+        return bmp;
     }
 
     /** Fill {@code dest} by point-sampling. Used by tests and previews. */
-    static void render(Bitmap dest, int width, float px, float py, float angleRad, float offset) {
+    static void render(Bitmap dest, int widthA, int widthB, float px, float py, float angleRad, float offset) {
         int w = dest.getWidth(), h = dest.getHeight();
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
-                dest.setPixel(x, y, color(x, y, px, py, angleRad, offset, width));
+                dest.setPixel(x, y, color(x, y, px, py, angleRad, offset, widthA, widthB));
             }
         }
     }

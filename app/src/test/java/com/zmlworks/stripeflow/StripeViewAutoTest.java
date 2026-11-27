@@ -3,6 +3,7 @@ package com.zmlworks.stripeflow;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import android.graphics.Color;
 import android.view.View;
 
 import org.junit.Test;
@@ -21,13 +22,13 @@ public class StripeViewAutoTest {
         int width = 12;
         StripeView v = view();
         long seed = 7L;
-        v.configure(width, 300f, Prefs.DIR_UP_LEFT, false, 90f, Prefs.ROT_CCW, false, seed, true, StripePattern.SCHEME_BW);
+        v.configure(width, width, 300f, Prefs.DIR_UP_LEFT, false, 90f, Prefs.ROT_CCW, false, seed, true, StripePattern.SCHEME_BW);
 
         long dtNs = 1_000_000_000L / 60L;
         float dt = 1f / 60f;
         float prevPhase = 0f;
         boolean first = true;
-        float per = StripePattern.period(width);
+        float per = StripePattern.period(width, width);
         float x = 200f, y = 40f;
         float flowAcc = 0f, rotAcc = 0f;
         for (int i = 0; i <= 60 * 90; i++) {
@@ -50,15 +51,15 @@ public class StripeViewAutoTest {
             prevPhase = ph;
             first = false;
         }
-        int expected = StripePattern.colorFromPhase(v.offset(), width);
+        int expected = StripePattern.colorFromPhase(v.offset(), width, width);
         assertEquals(expected, StripePattern.color(
                 v.pivotX(), v.pivotY(), v.pivotX(), v.pivotY(), v.angle(), v.offset(),
-                width));
+                width, width));
     }
 
     @Test public void autoModeHonoursChosenWidth() {
         StripeView v = view();
-        v.configure(3, 0f, Prefs.DIR_DOWN_RIGHT, true, 0f, Prefs.ROT_CW, true, 1L, true, StripePattern.SCHEME_BW);
+        v.configure(3, 3, 0f, Prefs.DIR_DOWN_RIGHT, true, 0f, Prefs.ROT_CW, true, 1L, true, StripePattern.SCHEME_BW);
         v.setElapsedNanos(0L);
         // period 6: at the pivot with offset 0 the first three pixels along the
         // normal are black, the next three white. Vertical at angle 0 is easier.
@@ -68,27 +69,44 @@ public class StripeViewAutoTest {
         // Re-query by comparing colour at offset 0 vs a 3 px vs 8 px pattern
         // after posing at base angle with zero offset.
         v.setState(StripePattern.BASE_ANGLE_RAD, 128f, 128f, 0f);
-        int c0 = StripePattern.color(128f, 128f, 128f, 128f,
-                StripePattern.BASE_ANGLE_RAD, 0f, 3);
-        assertEquals(c0, StripePattern.colorFromPhase(0f, 3));
+        int c0 = StripePattern.color(128f, 128f, 128f, 128f, StripePattern.BASE_ANGLE_RAD, 0f, 3, 3);
+        assertEquals(c0, StripePattern.colorFromPhase(0f, 3, 3));
         // A point 3 px along the normal is the start of the next band for width 3,
         // but still in the first band for width 8.
         float ang = StripePattern.BASE_ANGLE_RAD;
         float nx = 128f + 3f * (float) Math.cos(ang);
         float ny = 128f + 3f * (float) Math.sin(ang);
-        assertEquals(StripePattern.colorFromPhase(3f, 3),
-                StripePattern.color(nx, ny, 128f, 128f, ang, 0f, 3));
-        assertTrue(StripePattern.color(nx, ny, 128f, 128f, ang, 0f, 3)
-                != StripePattern.color(nx, ny, 128f, 128f, ang, 0f, 8));
+        assertEquals(StripePattern.colorFromPhase(3f, 3, 3),
+                StripePattern.color(nx, ny, 128f, 128f, ang, 0f, 3, 3));
+        assertTrue(StripePattern.color(nx, ny, 128f, 128f, ang, 0f, 3, 3)
+                != StripePattern.color(nx, ny, 128f, 128f, ang, 0f, 8, 8));
     }
 
     @Test public void turningAutoOffRestoresManualConstantSpeed() {
         StripeView v = view();
-        v.configure(4, 10f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false, StripePattern.SCHEME_BW);
+        v.configure(4, 4, 10f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false, StripePattern.SCHEME_BW);
         v.setElapsedNanos(2_000_000_000L);
-        float per = StripePattern.period(4);
+        float per = StripePattern.period(4, 4);
         assertEquals(StripePattern.wrap(-20f, per), v.offset(), 1e-4f);
         assertEquals(StripePattern.BASE_ANGLE_RAD, v.angle(), 1e-5f);
+    }
+
+    @Test public void unequalWidthsWrapOnTheCombinedPeriod() {
+        StripeView v = view();
+        // A=3 (white), B=5 (black), period 8. DIR_DOWN_RIGHT is -1.
+        v.configure(3, 5, 8f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false, StripePattern.SCHEME_BW);
+        v.setElapsedNanos(0L);
+        assertEquals(8, StripePattern.period(3, 5));
+        assertEquals(0f, v.offset(), 1e-5f);
+        assertEquals(Color.BLACK, StripePattern.colorFromPhase(v.offset(), 3, 5));
+        // After 0.375 s the raw offset is -3, which wraps to 5 (start of white).
+        v.setElapsedNanos(375_000_000L);
+        assertEquals(5f, v.offset(), 1e-5f);
+        assertEquals(Color.WHITE, StripePattern.colorFromPhase(v.offset(), 3, 5));
+        // After 1 s the raw offset is -8, which wraps back to 0 (black).
+        v.setElapsedNanos(1_000_000_000L);
+        assertEquals(0f, v.offset(), 1e-5f);
+        assertEquals(Color.BLACK, StripePattern.colorFromPhase(v.offset(), 3, 5));
     }
 
     private static StripeView view() {

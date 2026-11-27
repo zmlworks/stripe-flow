@@ -18,8 +18,8 @@ import java.util.Locale;
 
 /** Launch screen: remember settings, then open the full-screen stripes. */
 public final class SettingsActivity extends Activity {
-    private TextView speedValue, widthValue, brightValue, rotSpeedValue, autoHint, distValue, hueRateValue;
-    private SeekBar speedBar, widthBar, brightBar, rotSpeedBar, distBar, hueRateBar;
+    private TextView speedValue, widthAValue, widthBValue, brightValue, rotSpeedValue, autoHint, distValue, hueRateValue;
+    private SeekBar speedBar, widthABar, widthBBar, brightBar, rotSpeedBar, distBar, hueRateBar;
     private CheckBox systemBright, rotate, wander, autoDrift;
     private LinearLayout rotPanel, manualPanel, autoPanel, colorPanel;
 
@@ -88,19 +88,34 @@ public final class SettingsActivity extends Activity {
 
         LinearLayout widthPanel = new LinearLayout(this);
         widthPanel.setOrientation(LinearLayout.VERTICAL);
-        heading(widthPanel, R.string.stripe_width);
-        widthValue = text("", 14, Ui.DIM);
-        widthPanel.addView(widthValue);
-        widthBar = seek(Prefs.WIDTH_MAX - Prefs.WIDTH_MIN, 0);
-        widthPanel.addView(widthBar, lp());
-        widthBar.setOnSeekBarChangeListener(new SimpleSeek() {
+        heading(widthPanel, R.string.width_a);
+        widthAValue = text("", 14, Ui.DIM);
+        widthPanel.addView(widthAValue);
+        widthABar = seek(Prefs.WIDTH_MAX - Prefs.WIDTH_MIN, 0);
+        widthPanel.addView(widthABar, lp());
+        widthABar.setOnSeekBarChangeListener(new SimpleSeek() {
             @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
                 int v = p + Prefs.WIDTH_MIN;
                 if (fromUser) {
-                    if (autoDrift.isChecked()) Prefs.setAutoWidth(SettingsActivity.this, v);
-                    else Prefs.setWidth(SettingsActivity.this, v);
+                    if (autoDrift.isChecked()) Prefs.setAutoWidthA(SettingsActivity.this, v);
+                    else Prefs.setWidthA(SettingsActivity.this, v);
                 }
-                widthValue.setText(getString(R.string.width_value, v));
+                widthAValue.setText(getString(R.string.width_value, v));
+            }
+        });
+        heading(widthPanel, R.string.width_b);
+        widthBValue = text("", 14, Ui.DIM);
+        widthPanel.addView(widthBValue);
+        widthBBar = seek(Prefs.WIDTH_MAX - Prefs.WIDTH_MIN, 0);
+        widthPanel.addView(widthBBar, lp());
+        widthBBar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                int v = p + Prefs.WIDTH_MIN;
+                if (fromUser) {
+                    if (autoDrift.isChecked()) Prefs.setAutoWidthB(SettingsActivity.this, v);
+                    else Prefs.setWidthB(SettingsActivity.this, v);
+                }
+                widthBValue.setText(getString(R.string.width_value, v));
             }
         });
         col.addView(widthPanel, lp());
@@ -278,9 +293,13 @@ public final class SettingsActivity extends Activity {
     }
 
     private void bindWidth() {
-        int w = autoDrift.isChecked() ? Prefs.autoWidth(this) : Prefs.width(this);
-        widthBar.setProgress(w - Prefs.WIDTH_MIN);
-        widthValue.setText(getString(R.string.width_value, w));
+        boolean auto = autoDrift.isChecked();
+        int a = auto ? Prefs.autoWidthA(this) : Prefs.widthA(this);
+        int b = auto ? Prefs.autoWidthB(this) : Prefs.widthB(this);
+        widthABar.setProgress(a - Prefs.WIDTH_MIN);
+        widthBBar.setProgress(b - Prefs.WIDTH_MIN);
+        widthAValue.setText(getString(R.string.width_value, a));
+        widthBValue.setText(getString(R.string.width_value, b));
     }
 
     private String rotLabel(float degPerSec) {
