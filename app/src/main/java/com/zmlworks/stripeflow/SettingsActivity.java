@@ -19,10 +19,10 @@ import java.util.Locale;
 
 /** Launch screen: remember settings, then open the full-screen stripes. */
 public final class SettingsActivity extends Activity {
-    private TextView speedValue, widthAValue, widthBValue, brightValue, rotSpeedValue, autoHint, distValue, hueRateValue, edgeBlurValue, startHueValue;
-    private SeekBar speedBar, widthABar, widthBBar, brightBar, rotSpeedBar, distBar, hueRateBar, edgeBlurBar, startHueBar;
-    private CheckBox systemBright, rotate, wander, autoDrift, antiAlias, edgeBlur, startHueSet;
-    private LinearLayout rotPanel, manualPanel, autoPanel, colorPanel, edgeBlurPanel, autoColorPanel, specColorPanel, startHuePanel;
+    private TextView speedValue, widthAValue, widthBValue, brightValue, rotSpeedValue, autoHint, distValue, hueRateValue, edgeBlurValue, startHueValue, aaEdgeValue, touchHint;
+    private SeekBar speedBar, widthABar, widthBBar, brightBar, rotSpeedBar, distBar, hueRateBar, edgeBlurBar, startHueBar, aaEdgeBar;
+    private CheckBox systemBright, rotate, wander, autoDrift, antiAlias, edgeBlur, startHueSet, aaWhitePriority, tapBlackout;
+    private LinearLayout rotPanel, manualPanel, autoPanel, colorPanel, edgeBlurPanel, autoColorPanel, specColorPanel, startHuePanel, aaEdgePanel;
     private View colorASwatch, colorBSwatch;
 
     @Override protected void onCreate(Bundle b) {
@@ -129,7 +129,37 @@ public final class SettingsActivity extends Activity {
         LinearLayout.LayoutParams aaLp = lp();
         aaLp.topMargin = Ui.dp(this, 16);
         col.addView(antiAlias, aaLp);
-        antiAlias.setOnCheckedChangeListener((v, on) -> Prefs.setAntiAlias(this, on));
+        aaEdgePanel = new LinearLayout(this);
+        aaEdgePanel.setOrientation(LinearLayout.VERTICAL);
+        heading(aaEdgePanel, R.string.aa_edge);
+        aaEdgeValue = text("", 14, Ui.DIM);
+        aaEdgePanel.addView(aaEdgeValue);
+        aaEdgeBar = seek(Scales.STEPS, Scales.progressFromAaEdge(Prefs.aaEdge(this)));
+        aaEdgePanel.addView(aaEdgeBar, lp());
+        aaEdgeBar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                float v = Scales.aaEdgeFromProgress(p);
+                if (fromUser) Prefs.setAaEdge(SettingsActivity.this, v);
+                aaEdgeValue.setText(getString(R.string.aa_edge_value, formatNum(v)));
+            }
+        });
+        aaEdgeValue.setText(getString(R.string.aa_edge_value, formatNum(Prefs.aaEdge(this))));
+        aaWhitePriority = new CheckBox(this);
+        aaWhitePriority.setText(R.string.aa_white_priority);
+        aaWhitePriority.setTextColor(Ui.TEXT);
+        aaWhitePriority.setChecked(Prefs.aaWhitePriority(this));
+        LinearLayout.LayoutParams wpLp = lp();
+        wpLp.topMargin = Ui.dp(this, 8);
+        aaEdgePanel.addView(aaWhitePriority, wpLp);
+        TextView wpHint = text(getString(R.string.aa_white_priority_hint), 13, Ui.DIM);
+        wpHint.setPadding(0, Ui.dp(this, 4), 0, 0);
+        aaEdgePanel.addView(wpHint);
+        aaWhitePriority.setOnCheckedChangeListener((v, on) -> Prefs.setAaWhitePriority(this, on));
+        col.addView(aaEdgePanel, lp());
+        antiAlias.setOnCheckedChangeListener((v, on) -> {
+            Prefs.setAntiAlias(this, on);
+            refreshAa();
+        });
 
         edgeBlur = new CheckBox(this);
         edgeBlur.setText(R.string.edge_blur);
@@ -320,6 +350,18 @@ public final class SettingsActivity extends Activity {
             refreshAuto();
         });
 
+        tapBlackout = new CheckBox(this);
+        tapBlackout.setText(R.string.tap_blackout);
+        tapBlackout.setTextColor(Ui.TEXT);
+        tapBlackout.setChecked(Prefs.tapBlackout(this));
+        LinearLayout.LayoutParams tbLp = lp();
+        tbLp.topMargin = Ui.dp(this, 16);
+        col.addView(tapBlackout, tbLp);
+        tapBlackout.setOnCheckedChangeListener((v, on) -> {
+            Prefs.setTapBlackout(this, on);
+            refreshTapBlackout();
+        });
+
         Button start = new Button(this);
         start.setText(R.string.start);
         start.setOnClickListener(v -> startActivity(new Intent(this, StripeActivity.class)));
@@ -327,9 +369,9 @@ public final class SettingsActivity extends Activity {
         startLp.topMargin = Ui.dp(this, 24);
         col.addView(start, startLp);
 
-        TextView hint = text(getString(R.string.touch_hint), 13, Ui.DIM);
-        hint.setPadding(0, Ui.dp(this, 12), 0, 0);
-        col.addView(hint);
+        touchHint = text("", 13, Ui.DIM);
+        touchHint.setPadding(0, Ui.dp(this, 12), 0, 0);
+        col.addView(touchHint);
 
         ScrollView sv = new ScrollView(this);
         sv.setBackgroundColor(Ui.BG);
@@ -341,6 +383,8 @@ public final class SettingsActivity extends Activity {
         refreshAuto();
         refreshColor();
         refreshEdgeBlur();
+        refreshAa();
+        refreshTapBlackout();
     }
 
     private void refreshBrightness() {
@@ -386,6 +430,15 @@ public final class SettingsActivity extends Activity {
 
     private void refreshEdgeBlur() {
         edgeBlurPanel.setVisibility(edgeBlur.isChecked() ? View.VISIBLE : View.GONE);
+    }
+
+    private void refreshAa() {
+        aaEdgePanel.setVisibility(antiAlias.isChecked() ? View.VISIBLE : View.GONE);
+    }
+
+    private void refreshTapBlackout() {
+        boolean on = tapBlackout.isChecked();
+        touchHint.setText(on ? R.string.touch_hint_blackout : R.string.touch_hint);
     }
 
     private void refreshDist(float scale) {

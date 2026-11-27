@@ -23,7 +23,24 @@ import org.robolectric.annotation.GraphicsMode;
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class StripeActivityTest {
 
+    private static void enableBlackout() {
+        android.content.Context app = RuntimeEnvironment.getApplication();
+        Prefs.setTapBlackout(app, true);
+    }
+
+    @Test public void firstTapReturnsToSettingsWhenBlackoutIsOff() {
+        android.content.Context app = RuntimeEnvironment.getApplication();
+        Prefs.sp(app).edit().clear().commit();
+        assertFalse(Prefs.tapBlackout(app));
+        ActivityController<StripeActivity> c = Robolectric.buildActivity(StripeActivity.class).setup();
+        StripeActivity a = c.get();
+        a.dispatchTouchEvent(down(12f, 20f));
+        assertTrue(a.isFinishing());
+        assertFalse(a.blackout());
+    }
+
     @Test public void firstTapBlacksOutWithoutFinishingAndClearsKeepScreenOn() {
+        enableBlackout();
         ActivityController<StripeActivity> c = Robolectric.buildActivity(StripeActivity.class).setup();
         StripeActivity a = c.get();
         assertFalse(a.isFinishing());
@@ -41,6 +58,7 @@ public class StripeActivityTest {
     }
 
     @Test public void secondTapFromBlackoutReturnsToSettings() {
+        enableBlackout();
         ActivityController<StripeActivity> c = Robolectric.buildActivity(StripeActivity.class).setup();
         StripeActivity a = c.get();
         a.dispatchTouchEvent(down(12f, 20f));
@@ -54,6 +72,7 @@ public class StripeActivityTest {
     }
 
     @Test public void backFromBlackoutReturnsToSettings() {
+        enableBlackout();
         ActivityController<StripeActivity> c = Robolectric.buildActivity(StripeActivity.class).setup();
         StripeActivity a = c.get();
         a.dispatchTouchEvent(down(12f, 20f));
@@ -64,6 +83,7 @@ public class StripeActivityTest {
     }
 
     @Test public void pauseAndResumeInBlackoutDoNotRestartTheStripesOrKeepTheScreenOn() {
+        enableBlackout();
         ActivityController<StripeActivity> c = Robolectric.buildActivity(StripeActivity.class).setup();
         StripeActivity a = c.get();
         a.dispatchTouchEvent(down(12f, 20f));
@@ -92,6 +112,7 @@ public class StripeActivityTest {
         Prefs.sp(app).edit().clear().commit();
         Prefs.setUseSystemBrightness(app, false);
         Prefs.setBrightness(app, 0.25f);
+        Prefs.setTapBlackout(app, true);
         ActivityController<StripeActivity> c = Robolectric.buildActivity(StripeActivity.class).setup();
         StripeActivity a = c.get();
         assertEquals(0.25f, a.getWindow().getAttributes().screenBrightness, 0.0001f);

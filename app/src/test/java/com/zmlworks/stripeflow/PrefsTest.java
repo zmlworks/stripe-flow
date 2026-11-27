@@ -43,8 +43,11 @@ public class PrefsTest {
         assertEquals(1f, Prefs.distScale(c), 0f);
         assertEquals(2f, Prefs.hueRate(c), 0f);
         assertFalse(Prefs.antiAlias(c));
+        assertEquals(1f, Prefs.aaEdge(c), 0f);
+        assertFalse(Prefs.aaWhitePriority(c));
         assertFalse(Prefs.edgeBlur(c));
         assertEquals(64, Prefs.edgeBlurWidth(c));
+        assertFalse(Prefs.tapBlackout(c));
         assertFalse(Prefs.colorSpecified(c));
         assertFalse(Prefs.startHueSet(c));
         assertEquals(0f, Prefs.startHue(c), 0f);
@@ -74,8 +77,11 @@ public class PrefsTest {
         Prefs.setDistScale(c, 2.5f);
         Prefs.setHueRate(c, 0f);
         Prefs.setAntiAlias(c, true);
+        Prefs.setAaEdge(c, 0.3f);
+        Prefs.setAaWhitePriority(c, true);
         Prefs.setEdgeBlur(c, true);
         Prefs.setEdgeBlurWidth(c, 48);
+        Prefs.setTapBlackout(c, true);
         Prefs.setColorSpecified(c, true);
         Prefs.setStartHueSet(c, true);
         Prefs.setStartHue(c, 45f);
@@ -102,8 +108,11 @@ public class PrefsTest {
         assertEquals(2.5f, Prefs.distScale(c), 0.0001f);
         assertEquals(0f, Prefs.hueRate(c), 0f);
         assertTrue(Prefs.antiAlias(c));
+        assertEquals(0.3f, Prefs.aaEdge(c), 0.0001f);
+        assertTrue(Prefs.aaWhitePriority(c));
         assertTrue(Prefs.edgeBlur(c));
         assertEquals(48, Prefs.edgeBlurWidth(c));
+        assertTrue(Prefs.tapBlackout(c));
         assertTrue(Prefs.colorSpecified(c));
         assertTrue(Prefs.startHueSet(c));
         assertEquals(45f, Prefs.startHue(c), 0f);
@@ -158,6 +167,10 @@ public class PrefsTest {
         assertEquals(Prefs.EDGE_BLUR_MIN, Prefs.edgeBlurWidth(c));
         Prefs.setEdgeBlurWidth(c, 999);
         assertEquals(Prefs.EDGE_BLUR_MAX, Prefs.edgeBlurWidth(c));
+        Prefs.setAaEdge(c, 0.01f);
+        assertEquals(Prefs.AA_EDGE_MIN, Prefs.aaEdge(c), 0f);
+        Prefs.setAaEdge(c, 2f);
+        assertEquals(Prefs.AA_EDGE_MAX, Prefs.aaEdge(c), 0f);
         Prefs.setColorAS(c, -0.2f);
         assertEquals(0f, Prefs.colorAS(c), 0f);
         Prefs.setColorAV(c, 1.5f);

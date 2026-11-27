@@ -8,8 +8,9 @@ import android.graphics.Color;
  * the unit normal (cos θ, sin θ). The flow is the same axis, so it stays
  * perpendicular to the stripes as the angle changes.
  * Colour is point-sampled: every pixel is one of the two scheme colours,
- * unless anti-aliasing is on, in which case a 1 px linear ramp is
- * box-filtered into a 1:1 tile so each boundary is about one device pixel wide.
+ * unless anti-aliasing is on, in which case a linear ramp (default 1 px,
+ * optionally narrower, and optionally biased into the black band) is
+ * box-filtered into a 1:1 tile.
  * The white (colour A) and black (colour B) bands may have different widths.
  * The repeating period along the normal is widthA + widthB.
  */
@@ -109,12 +110,17 @@ final class StripePattern {
     }
 
     /**
-     * Half-width in device pixels of the anti-aliased linear ramp at each
-     * band boundary (0.5 on each side, so the soft edge is 1 px), clamped
-     * so a 1 px band still reaches full colour at its centre.
+     * Half-width in device pixels of a symmetric anti-aliased linear ramp
+     * (0.5 on each side when the edge is 1 px), clamped so a 1 px band still
+     * reaches full colour at its centre in the continuous coverage.
      */
     static float aaHalf(float widthA, float widthB) {
-        return Math.min(0.5f, 0.5f * Math.min(normWidthF(widthA), normWidthF(widthB)));
+        return aaHalf(widthA, widthB, Prefs.AA_EDGE_DEFAULT);
+    }
+
+    static float aaHalf(float widthA, float widthB, float edgePx) {
+        float edge = Prefs.clampF(edgePx, Prefs.AA_EDGE_MIN, Prefs.AA_EDGE_MAX);
+        return Math.min(0.5f * edge, 0.5f * Math.min(normWidthF(widthA), normWidthF(widthB)));
     }
 
     /**
@@ -131,6 +137,32 @@ final class StripePattern {
         if (dist >= half) return inBlack ? 0f : 1f;
         float u = dist / half;
         return inBlack ? 0.5f * (1f - u) : 0.5f * (1f + u);
+    }
+
+    /**
+     * Coverage with a chosen edge width. When {@code whitePriority} is false
+     * this is the symmetric ramp of {@link #aaHalf(float, float, float)}.
+     * When it is true, colour A stays at full coverage across its whole
+     * width and the ramp of width {@code edgePx} sits only in colour B.
+     */
+    static float coverage(float phase, float widthA, float widthB, float edgePx,
+                          boolean whitePriority) {
+        if (!whitePriority) return coverage(phase, widthA, widthB, aaHalf(widthA, widthB, edgePx));
+        float a = normWidthF(widthA), b = normWidthF(widthB);
+        float p = a + b;
+        float ramp = Prefs.clampF(edgePx, Prefs.AA_EDGE_MIN, Prefs.AA_EDGE_MAX);
+        float w = wrap(phase, p);
+        if (w >= b) return 1f;
+        if (ramp <= 0f) return 0f;
+        float fromLeft = w;
+        float fromRight = b - w;
+        return Math.max(rampCov(fromLeft, ramp), rampCov(fromRight, ramp));
+    }
+
+    static float rampCov(float dist, float ramp) {
+        if (dist >= ramp) return 0f;
+        if (dist <= 0f) return 1f;
+        return 1f - dist / ramp;
     }
 
     static int gray(float coverage) {
@@ -231,29 +263,36 @@ final class StripePattern {
     /**
      * When {@code aa} is false, the hard 1:1 tile. When it is true, a 1-D
      * tile (two rows, 1 texel = 1 device pixel) whose coverage is box-filtered
-     * from a 1 px linear ramp at each boundary. Bilinear sampling then keeps
-     * rotation and sub-pixel flow smooth, and REPEAT seams stay periodic.
+     * from the chosen boundary ramp. Bilinear sampling then keeps rotation
+     * and sub-pixel flow smooth, and REPEAT seams stay periodic.
      */
     static Bitmap tile(int widthA, int widthB, boolean aa) {
+        return tile(widthA, widthB, aa, Prefs.AA_EDGE_DEFAULT, false);
+    }
+
+    static Bitmap tile(int widthA, int widthB, boolean aa, float edgePx, boolean whitePriority) {
         if (!aa) return tile(widthA, widthB);
-        return aaTile(normWidth(widthA), normWidth(widthB));
+        return aaTile(normWidth(widthA), normWidth(widthB), edgePx, whitePriority);
     }
 
     static Bitmap tile(float widthA, float widthB, boolean aa) {
+        return tile(widthA, widthB, aa, Prefs.AA_EDGE_DEFAULT, false);
+    }
+
+    static Bitmap tile(float widthA, float widthB, boolean aa, float edgePx, boolean whitePriority) {
         if (!aa && widthA == (int) widthA && widthB == (int) widthB) {
             return tile((int) widthA, (int) widthB);
         }
-        return aaTile(normWidthF(widthA), normWidthF(widthB));
+        return aaTile(normWidthF(widthA), normWidthF(widthB), edgePx, whitePriority);
     }
 
-    private static Bitmap aaTile(float widthA, float widthB) {
+    private static Bitmap aaTile(float widthA, float widthB, float edgePx, boolean whitePriority) {
         float period = periodF(widthA, widthB);
         // 1 texel = 1 device pixel. Fractional widths round the period to an
         // integer texel count and map the true period onto that width, so
         // REPEAT is exactly one cycle.
         int tw = Math.max(1, Math.round(period));
         int th = AA_TILE_HEIGHT;
-        float half = aaHalf(widthA, widthB);
         Bitmap bmp = Bitmap.createBitmap(tw, th, Bitmap.Config.ARGB_8888);
         bmp.setDensity(Bitmap.DENSITY_NONE);
         int[] row = new int[tw];
@@ -262,7 +301,7 @@ final class StripePattern {
             float step = period / tw / AA_SCALE;
             float acc = 0f;
             for (int i = 0; i < AA_SCALE; i++) {
-                acc += coverage(x0 + (i + 0.5f) * step, widthA, widthB, half);
+                acc += coverage(x0 + (i + 0.5f) * step, widthA, widthB, edgePx, whitePriority);
             }
             row[x] = gray(acc / AA_SCALE);
         }

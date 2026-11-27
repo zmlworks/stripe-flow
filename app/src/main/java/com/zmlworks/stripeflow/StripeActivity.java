@@ -12,14 +12,16 @@ import android.view.WindowInsetsController;
 import android.view.WindowManager;
 
 /**
- * Immersive full-screen stripes. A tap blacks the screen out (animation
- * paused, the phone may time out and lock as usual). A second tap, or the
- * back gesture or button, returns to settings. Unlocking the phone leaves
- * the blackout in place.
+ * Immersive full-screen stripes. When tap-to-blackout is off, a tap
+ * returns to settings. When it is on, a first tap blacks the screen out
+ * (animation paused, the phone may time out and lock as usual) and a
+ * second tap, or the back gesture or button, returns to settings.
+ * Unlocking the phone leaves the blackout in place.
  */
 public final class StripeActivity extends Activity {
     private StripeView view;
     private boolean blackout;
+    private boolean tapBlackout;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -32,6 +34,7 @@ public final class StripeActivity extends Activity {
             lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
         w.setAttributes(lp);
+        tapBlackout = Prefs.tapBlackout(this);
         view = new StripeView(this);
         setContentView(view);
         view.requestApplyInsets();
@@ -59,7 +62,7 @@ public final class StripeActivity extends Activity {
 
     @Override public boolean onTouchEvent(MotionEvent ev) {
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
-            if (blackout) finish();
+            if (!tapBlackout || blackout) finish();
             else enterBlackout();
             return true;
         }

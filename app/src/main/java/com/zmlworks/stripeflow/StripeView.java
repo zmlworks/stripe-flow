@@ -46,6 +46,8 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     private float colorBH = Prefs.COLOR_B_H_DEFAULT, colorBS = Prefs.COLOR_SV_DEFAULT, colorBV = Prefs.COLOR_SV_DEFAULT;
     private int lastSpecifiedA, lastSpecifiedB;
     private boolean antiAlias;
+    private float aaEdgePx = Prefs.AA_EDGE_DEFAULT;
+    private boolean aaWhitePriority;
     private int edgeBlurPx;
     private final EdgeFade edgeFade = new EdgeFade();
     private int cornerTl, cornerTr, cornerBr, cornerBl;
@@ -83,13 +85,13 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
             configure(Prefs.autoWidthA(c), Prefs.autoWidthB(c), 0f, Prefs.DIR_DEFAULT,
                     true, 0f, Prefs.ROT_CW, true, System.nanoTime(), true,
                     Prefs.colorScheme(c), Prefs.distScale(c), Prefs.hueRate(c),
-                    Prefs.antiAlias(c), fade);
+                    Prefs.antiAlias(c), fade, Prefs.aaEdge(c), Prefs.aaWhitePriority(c));
         } else {
             configure(Prefs.widthA(c), Prefs.widthB(c), Prefs.speed(c), Prefs.direction(c),
                     Prefs.rotate(c), Prefs.rotateSpeed(c), Prefs.rotateDir(c),
                     Prefs.wander(c), System.nanoTime(), false,
                     Prefs.colorScheme(c), Prefs.DIST_DEFAULT, Prefs.hueRate(c),
-                    Prefs.antiAlias(c), fade);
+                    Prefs.antiAlias(c), fade, Prefs.aaEdge(c), Prefs.aaWhitePriority(c));
         }
         applyColorStyle(Prefs.colorSpecified(c), Prefs.startHueSet(c), Prefs.startHue(c),
                 Prefs.colorAH(c), Prefs.colorAS(c), Prefs.colorAV(c),
@@ -116,6 +118,16 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
                    boolean rotate, float rotDegPerSec, int rotDir,
                    boolean wander, long wanderSeed, boolean auto, int colorScheme,
                    float distScale, float hueRate, boolean antiAlias, int edgeBlurPx) {
+        configure(widthA, widthB, speedPxPerSec, direction, rotate, rotDegPerSec, rotDir,
+                wander, wanderSeed, auto, colorScheme, distScale, hueRate, antiAlias, edgeBlurPx,
+                Prefs.AA_EDGE_DEFAULT, false);
+    }
+
+    void configure(int widthA, int widthB, float speedPxPerSec, int direction,
+                   boolean rotate, float rotDegPerSec, int rotDir,
+                   boolean wander, long wanderSeed, boolean auto, int colorScheme,
+                   float distScale, float hueRate, boolean antiAlias, int edgeBlurPx,
+                   float aaEdgePx, boolean aaWhitePriority) {
         this.auto = auto;
         this.colorScheme = colorScheme == StripePattern.SCHEME_COLOR
                 ? StripePattern.SCHEME_COLOR : StripePattern.SCHEME_BW;
@@ -135,6 +147,8 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         this.widthA = Prefs.clamp(widthA, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
         this.widthB = Prefs.clamp(widthB, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
         this.antiAlias = antiAlias;
+        this.aaEdgePx = Prefs.clampF(aaEdgePx, Prefs.AA_EDGE_MIN, Prefs.AA_EDGE_MAX);
+        this.aaWhitePriority = aaWhitePriority;
         this.edgeBlurPx = Prefs.clamp(edgeBlurPx, Prefs.EDGE_BLUR_MIN, Prefs.EDGE_BLUR_MAX);
         this.speed = speedPxPerSec;
         this.direction = direction >= 0 ? 1 : -1;
@@ -144,7 +158,8 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
         this.wander = wander || auto;
         this.wanderSeed = wanderSeed;
         if (tile != null) tile.recycle();
-        tile = StripePattern.tile(this.widthA, this.widthB, this.antiAlias);
+        tile = StripePattern.tile(this.widthA, this.widthB, this.antiAlias,
+                this.aaEdgePx, this.aaWhitePriority);
         int n = tile.getWidth() * tile.getHeight();
         if (maskPx == null || maskPx.length != n) {
             maskPx = new int[n];
@@ -231,6 +246,8 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     float hue() { return lastHue; }
     int colorScheme() { return colorScheme; }
     boolean antiAlias() { return antiAlias; }
+    float aaEdgePx() { return aaEdgePx; }
+    boolean aaWhitePriority() { return aaWhitePriority; }
     int edgeBlurPx() { return edgeBlurPx; }
     boolean filterBitmap() { return paint.isFilterBitmap(); }
     boolean blackout() { return blackout; }

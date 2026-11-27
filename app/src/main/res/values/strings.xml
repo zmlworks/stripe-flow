@@ -47,10 +47,16 @@
     <string name="hue_rate_cycle_min">%s 分で一周</string>
     <string name="hue_rate_cycle_sec">%s 秒で一周</string>
     <string name="anti_alias">アンチエイリアス</string>
+    <string name="aa_edge">境目の幅</string>
+    <string name="aa_edge_value">%s px</string>
+    <string name="aa_white_priority">白を優先</string>
+    <string name="aa_white_priority_hint">白い帯の幅を保ち、中間色は黒側だけに出ます</string>
+    <string name="tap_blackout">タップで画面を暗くする</string>
     <string name="edge_blur">枠をぼかす</string>
     <string name="edge_blur_hint">画面の端を、縞の平均色へ溶かします。角の丸みに合わせます</string>
     <string name="edge_blur_width">ぼかしの幅</string>
     <string name="edge_blur_value">%d px</string>
     <string name="start">開始</string>
-    <string name="touch_hint">全画面表示中に画面をタッチすると、いったん真っ暗になります。もう一度タッチするか、戻る操作でこの設定に戻ります</string>
+    <string name="touch_hint">全画面表示中に画面をタッチすると、この設定に戻ります</string>
+    <string name="touch_hint_blackout">全画面表示中に画面をタッチすると、いったん真っ暗になります。もう一度タッチするか、戻る操作でこの設定に戻ります</string>
 </resources>

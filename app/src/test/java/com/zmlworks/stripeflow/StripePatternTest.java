@@ -336,4 +336,62 @@ public class StripePatternTest {
         assertEquals(0xFF000000, StripePattern.colorAtHsv(0f, 0f, 0f));
         assertEquals(0xFFFFFFFF, StripePattern.colorAtHsv(0f, 0f, 1f));
     }
+
+    @Test public void defaultAaRampGreysAOnePixelWhiteTexel() {
+        Bitmap tile = StripePattern.tile(1, 8, true);
+        // White band is the texel at x=8. The 1 px symmetric ramp eats both
+        // edges, so the box-filtered texel is mid-grey, not 255.
+        int g = tile.getPixel(8, 0) & 0xff;
+        assertTrue("default 1 px white texel should be grey, got " + g, g < 250);
+        assertTrue("expected around 191, got " + g, g > 160);
+    }
+
+    @Test public void whitePriorityKeepsAOnePixelWhiteTexelAt255() {
+        Bitmap tile = StripePattern.tile(1, 8, true, 1f, true);
+        assertEquals(0xFFFFFFFF, tile.getPixel(8, 0));
+        assertEquals(0xFFFFFFFF, tile.getPixel(8, 1));
+        // Black core, far from both edges, stays black.
+        assertEquals(0xFF000000, tile.getPixel(4, 0));
+        // The texel just inside black at the white boundary is intermediate.
+        int left = tile.getPixel(7, 0) & 0xff;
+        assertTrue("black-side ramp " + left, left > 0 && left < 255);
+    }
+
+    @Test public void narrowerSymmetricRampRaisesTheOnePixelWhitePeak() {
+        int wide = StripePattern.tile(1, 8, true, 1f, false).getPixel(8, 0) & 0xff;
+        int mid = StripePattern.tile(1, 8, true, 0.3f, false).getPixel(8, 0) & 0xff;
+        int narrow = StripePattern.tile(1, 8, true, 0.1f, false).getPixel(8, 0) & 0xff;
+        assertTrue("0.3 px " + mid + " should exceed 1.0 px " + wide, mid > wide);
+        assertTrue("0.1 px " + narrow + " should be at least 0.3 px " + mid, narrow >= mid);
+        // 4 box-filter samples can miss a 0.1 px edge, so the 1 px white texel
+        // may already be 255. A 0.3 px edge is still usually a little under.
+        assertTrue("narrow should be near white, got " + narrow, narrow >= 240);
+    }
+
+    @Test public void whitePriorityCoverageIsOneAcrossTheWholeWhiteBand() {
+        int a = 1, b = 8;
+        for (float x = b; x < b + a; x += 0.05f) {
+            assertEquals("x=" + x, 1f, StripePattern.coverage(x, a, b, 1f, true), 1e-5f);
+        }
+        assertEquals(1f, StripePattern.coverage(b, a, b, 1f, true), 1e-5f);
+        assertEquals(0f, StripePattern.coverage(b / 2f, a, b, 1f, true), 1e-5f);
+        // Just inside black, the 1 px ramp is almost white.
+        float near = StripePattern.coverage(b - 0.05f, a, b, 1f, true);
+        assertTrue("near white edge " + near, near > 0.9f && near < 1f);
+    }
+
+    @Test public void twoPixelWhiteHasAPureTexelWhenTheRampIsNarrowOrBiased() {
+        // Default 1 px symmetric ramp on a 2 px white band leaves no 255 texel
+        // (each 1 px texel includes a 0.5 px ramp).
+        int def0 = StripePattern.tile(2, 8, true, 1f, false).getPixel(8, 0) & 0xff;
+        int def1 = StripePattern.tile(2, 8, true, 1f, false).getPixel(9, 0) & 0xff;
+        assertTrue("default 2 px whites are grey: " + def0 + "," + def1,
+                def0 < 255 && def1 < 255);
+        Bitmap prior = StripePattern.tile(2, 8, true, 1f, true);
+        assertEquals(0xFFFFFFFF, prior.getPixel(8, 0));
+        assertEquals(0xFFFFFFFF, prior.getPixel(9, 0));
+        Bitmap narrow = StripePattern.tile(2, 8, true, 0.3f, false);
+        int n0 = narrow.getPixel(8, 0) & 0xff, n1 = narrow.getPixel(9, 0) & 0xff;
+        assertTrue("narrow 2 px peaks " + n0 + "," + n1, n0 > def0 && n1 > def1);
+    }
 }

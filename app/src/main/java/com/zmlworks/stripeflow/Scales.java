@@ -59,4 +59,17 @@ final class Scales {
         degPerSec = Prefs.clampF(degPerSec, Prefs.HUE_RATE_MIN, Prefs.HUE_RATE_MAX);
         return Math.round(STEPS * (float) Math.cbrt(degPerSec / Prefs.HUE_RATE_MAX));
     }
+
+    static float aaEdgeFromProgress(int progress) {
+        float t = progress / (float) STEPS;
+        if (t < 0f) t = 0f;
+        if (t > 1f) t = 1f;
+        return Prefs.AA_EDGE_MIN + t * (Prefs.AA_EDGE_MAX - Prefs.AA_EDGE_MIN);
+    }
+
+    static int progressFromAaEdge(float edgePx) {
+        edgePx = Prefs.clampF(edgePx, Prefs.AA_EDGE_MIN, Prefs.AA_EDGE_MAX);
+        float t = (edgePx - Prefs.AA_EDGE_MIN) / (Prefs.AA_EDGE_MAX - Prefs.AA_EDGE_MIN);
+        return Math.round(STEPS * t);
+    }
 }

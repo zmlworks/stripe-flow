@@ -34,8 +34,11 @@ final class Prefs {
     static final String COLOR_B_S = "color_b_s";
     static final String COLOR_B_V = "color_b_v";
     static final String AA = "anti_alias";
+    static final String AA_EDGE = "aa_edge_px";
+    static final String AA_WHITE_PRIOR = "aa_white_priority";
     static final String EDGE_BLUR = "edge_blur";
     static final String EDGE_BLUR_WIDTH = "edge_blur_width_px";
+    static final String TAP_BLACKOUT = "tap_blackout";
 
     static final int SPEED_MIN = 0, SPEED_MAX = 300, SPEED_DEFAULT = 3;
     static final int WIDTH_MIN = 1, WIDTH_MAX = 64, WIDTH_DEFAULT = 1, AUTO_WIDTH_DEFAULT = 8;
@@ -52,6 +55,8 @@ final class Prefs {
     /** +1 = clockwise on screen (y down), -1 = counterclockwise. */
     static final int ROT_CW = 1, ROT_CCW = -1, ROT_DIR_DEFAULT = ROT_CW;
     static final int EDGE_BLUR_MIN = 0, EDGE_BLUR_MAX = 256, EDGE_BLUR_DEFAULT = 64;
+    /** Full width of the AA boundary ramp, in device pixels. Default 1 is the original soft edge. */
+    static final float AA_EDGE_MIN = 0.1f, AA_EDGE_MAX = 1.0f, AA_EDGE_DEFAULT = 1.0f;
 
     static SharedPreferences sp(Context c) {
         return c.getSharedPreferences("settings", Context.MODE_PRIVATE);
@@ -257,6 +262,30 @@ final class Prefs {
 
     static void setAntiAlias(Context c, boolean v) {
         sp(c).edit().putBoolean(AA, v).apply();
+    }
+
+    static float aaEdge(Context c) {
+        return clampF(sp(c).getFloat(AA_EDGE, AA_EDGE_DEFAULT), AA_EDGE_MIN, AA_EDGE_MAX);
+    }
+
+    static void setAaEdge(Context c, float v) {
+        sp(c).edit().putFloat(AA_EDGE, clampF(v, AA_EDGE_MIN, AA_EDGE_MAX)).apply();
+    }
+
+    static boolean aaWhitePriority(Context c) {
+        return sp(c).getBoolean(AA_WHITE_PRIOR, false);
+    }
+
+    static void setAaWhitePriority(Context c, boolean v) {
+        sp(c).edit().putBoolean(AA_WHITE_PRIOR, v).apply();
+    }
+
+    static boolean tapBlackout(Context c) {
+        return sp(c).getBoolean(TAP_BLACKOUT, false);
+    }
+
+    static void setTapBlackout(Context c, boolean v) {
+        sp(c).edit().putBoolean(TAP_BLACKOUT, v).apply();
     }
 
     static boolean edgeBlur(Context c) {

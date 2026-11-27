@@ -58,4 +58,12 @@ public class ScalesTest {
         assertEquals(Prefs.HUE_RATE_DEFAULT, back, 0.05f);
         assertTrue(Scales.progressFromHueRate(Prefs.HUE_RATE_DEFAULT) < Scales.STEPS / 2);
     }
+
+    @Test public void aaEdgeIsLinearAndRoundTrips() {
+        assertEquals(Prefs.AA_EDGE_MIN, Scales.aaEdgeFromProgress(0), 1e-5f);
+        assertEquals(Prefs.AA_EDGE_MAX, Scales.aaEdgeFromProgress(Scales.STEPS), 1e-5f);
+        assertEquals(1f, Scales.aaEdgeFromProgress(Scales.progressFromAaEdge(1f)), 1e-3f);
+        assertEquals(0.3f, Scales.aaEdgeFromProgress(Scales.progressFromAaEdge(0.3f)), 1e-3f);
+        assertEquals(0.1f, Scales.aaEdgeFromProgress(Scales.progressFromAaEdge(0.1f)), 1e-3f);
+    }
 }
