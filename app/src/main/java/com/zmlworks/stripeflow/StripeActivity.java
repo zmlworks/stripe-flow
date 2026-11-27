@@ -13,8 +13,9 @@ import android.view.WindowManager;
 
 /**
  * Immersive full-screen stripes. A tap blacks the screen out (animation
- * paused, the phone may time out and lock as usual). A second tap resumes
- * the stripes. The back gesture or button returns to settings.
+ * paused, the phone may time out and lock as usual). A second tap, or the
+ * back gesture or button, returns to settings. Unlocking the phone leaves
+ * the blackout in place.
  */
 public final class StripeActivity extends Activity {
     private StripeView view;
@@ -58,7 +59,7 @@ public final class StripeActivity extends Activity {
 
     @Override public boolean onTouchEvent(MotionEvent ev) {
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
-            if (blackout) exitBlackout();
+            if (blackout) finish();
             else enterBlackout();
             return true;
         }
@@ -76,15 +77,6 @@ public final class StripeActivity extends Activity {
         blackout = true;
         if (view != null) view.setBlackout(true);
         applyStripeWindowFlags();
-    }
-
-    private void exitBlackout() {
-        if (!blackout) return;
-        blackout = false;
-        if (view != null) view.setBlackout(false);
-        applyStripeWindowFlags();
-        if (view != null) view.setRunning(true);
-        hideSystemBars();
     }
 
     /**

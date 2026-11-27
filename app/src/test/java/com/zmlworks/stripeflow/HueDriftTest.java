@@ -48,4 +48,13 @@ public class HueDriftTest {
         assertTrue(HueDrift.startHue(7L) != HueDrift.startHue(8L)
                 || HueDrift.startHue(1L) != HueDrift.startHue(99L));
     }
+
+    @Test public void suppliedStartHueIsUsedAndStaysPutWhenRateIsZero() {
+        float h0 = 120f;
+        for (long seed : SEEDS) {
+            assertEquals(h0, HueDrift.hueDeg(0f, seed, 0f, h0), 0f);
+            assertEquals(h0, HueDrift.hueDeg(30f, seed, 0f, h0), 0f);
+            assertTrue(HueDrift.hueDeg(30f, seed, 2f, h0) > h0 + 40f);
+        }
+    }
 }

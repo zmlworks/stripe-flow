@@ -81,6 +81,18 @@ final class StripePattern {
         return colorAtHue(hueDeg, new float[3]);
     }
 
+    /** HSV colour at the given hue (degrees), saturation and value in 0..1. */
+    static int colorAtHsv(float hueDeg, float sat, float value, float[] hsv) {
+        hsv[0] = wrapHue(hueDeg);
+        hsv[1] = Prefs.clampF(sat, 0f, 1f);
+        hsv[2] = Prefs.clampF(value, 0f, 1f);
+        return android.graphics.Color.HSVToColor(hsv);
+    }
+
+    static int colorAtHsv(float hueDeg, float sat, float value) {
+        return colorAtHsv(hueDeg, sat, value, new float[3]);
+    }
+
     static int colorFromPhase(float phase, int widthA, int widthB) {
         int a = normWidth(widthA), b = normWidth(widthB);
         // A sub-pixel bias absorbs -eps from sin/cos of 90°, which would

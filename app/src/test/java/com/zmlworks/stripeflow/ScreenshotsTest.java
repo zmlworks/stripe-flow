@@ -28,7 +28,7 @@ import org.robolectric.annotation.GraphicsMode;
 @Config(sdk = 35, qualifiers = "w360dp-h800dp-port-xxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 public class ScreenshotsTest {
-    static final int W = 1080, H = 4000;
+    static final int W = 1080, H = 5400;
     static final File DIR = new File("build/reports/screens");
 
     @Test public void settingsScreen() throws Exception {
@@ -81,6 +81,22 @@ public class ScreenshotsTest {
         Prefs.sp(app).edit().clear().commit();
     }
 
+    @Test public void settingsScreenColorSpecified() throws Exception {
+        android.content.Context app = RuntimeEnvironment.getApplication();
+        Prefs.sp(app).edit().clear().commit();
+        Prefs.setColorScheme(app, Prefs.COLOR_MODE);
+        Prefs.setColorSpecified(app, true);
+        Prefs.setColorAH(app, 120f);
+        Prefs.setColorBH(app, 300f);
+        Activity a = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        Bitmap bmp = drawActivity(a);
+        assertTrue(countColor(bmp, Ui.TEXT) > 100);
+        int green = StripePattern.colorAtHsv(120f, 1f, 1f);
+        assertTrue("swatch green missing", countColor(bmp, green) > 10);
+        save(bmp, "settings-color-specified.png");
+        Prefs.sp(app).edit().clear().commit();
+    }
+
     @Test public void settingsScreenAaAndEdgeBlur() throws Exception {
         android.content.Context app = RuntimeEnvironment.getApplication();
         Prefs.sp(app).edit().clear().commit();
@@ -94,6 +110,24 @@ public class ScreenshotsTest {
         assertTrue(countColor(bmp, Ui.TEXT) > 100);
         save(bmp, "settings-aa-blur.png");
         Prefs.sp(app).edit().clear().commit();
+    }
+
+    @Test public void blackWhiteCentreCheckShot() throws Exception {
+        int s = 512, blur = 64;
+        StripeView v = new StripeView(Robolectric.buildActivity(SettingsActivity.class).setup().get());
+        v.configure(8, 8, 0f, Prefs.DIR_DOWN_RIGHT, false, 0f, Prefs.ROT_CW, false, 1L, false,
+                StripePattern.SCHEME_BW, 1f, 0f, false, blur);
+        v.setCornerRadii(40, 40, 40, 40);
+        v.measure(View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(s, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, s, s);
+        v.setState(0f, 0f, 0f, 0f);
+        Bitmap bmp = drawView(v);
+        assertEquals(android.graphics.Color.BLACK, bmp.getPixel(s / 2, s / 2));
+        // Mid-white band at x=12, well inside the fade.
+        assertEquals(android.graphics.Color.WHITE, bmp.getPixel(12 + 16 * 16, s / 2));
+        save(bmp, "bw-centre.png");
+        save(crop(bmp, s / 2 - 48, s / 2 - 48, 96, 96), "bw-centre-detail.png");
     }
 
     @Test public void stripeViewMatchesPointSamplingAndRotatesWithoutJumping() throws Exception {

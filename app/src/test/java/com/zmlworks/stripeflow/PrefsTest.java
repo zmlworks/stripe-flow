@@ -45,6 +45,15 @@ public class PrefsTest {
         assertFalse(Prefs.antiAlias(c));
         assertFalse(Prefs.edgeBlur(c));
         assertEquals(64, Prefs.edgeBlurWidth(c));
+        assertFalse(Prefs.colorSpecified(c));
+        assertFalse(Prefs.startHueSet(c));
+        assertEquals(0f, Prefs.startHue(c), 0f);
+        assertEquals(120f, Prefs.colorAH(c), 0f);
+        assertEquals(1f, Prefs.colorAS(c), 0f);
+        assertEquals(1f, Prefs.colorAV(c), 0f);
+        assertEquals(300f, Prefs.colorBH(c), 0f);
+        assertEquals(1f, Prefs.colorBS(c), 0f);
+        assertEquals(1f, Prefs.colorBV(c), 0f);
     }
 
     @Test public void roundTrip() {
@@ -67,6 +76,15 @@ public class PrefsTest {
         Prefs.setAntiAlias(c, true);
         Prefs.setEdgeBlur(c, true);
         Prefs.setEdgeBlurWidth(c, 48);
+        Prefs.setColorSpecified(c, true);
+        Prefs.setStartHueSet(c, true);
+        Prefs.setStartHue(c, 45f);
+        Prefs.setColorAH(c, 30f);
+        Prefs.setColorAS(c, 0.4f);
+        Prefs.setColorAV(c, 0.6f);
+        Prefs.setColorBH(c, 210f);
+        Prefs.setColorBS(c, 0.2f);
+        Prefs.setColorBV(c, 0.8f);
         assertEquals(7, Prefs.speed(c));
         assertEquals(40, Prefs.widthA(c));
         assertEquals(12, Prefs.widthB(c));
@@ -86,6 +104,15 @@ public class PrefsTest {
         assertTrue(Prefs.antiAlias(c));
         assertTrue(Prefs.edgeBlur(c));
         assertEquals(48, Prefs.edgeBlurWidth(c));
+        assertTrue(Prefs.colorSpecified(c));
+        assertTrue(Prefs.startHueSet(c));
+        assertEquals(45f, Prefs.startHue(c), 0f);
+        assertEquals(30f, Prefs.colorAH(c), 0f);
+        assertEquals(0.4f, Prefs.colorAS(c), 0.0001f);
+        assertEquals(0.6f, Prefs.colorAV(c), 0.0001f);
+        assertEquals(210f, Prefs.colorBH(c), 0f);
+        assertEquals(0.2f, Prefs.colorBS(c), 0.0001f);
+        assertEquals(0.8f, Prefs.colorBV(c), 0.0001f);
     }
 
     @Test public void clampsInvalidValues() {
@@ -131,6 +158,14 @@ public class PrefsTest {
         assertEquals(Prefs.EDGE_BLUR_MIN, Prefs.edgeBlurWidth(c));
         Prefs.setEdgeBlurWidth(c, 999);
         assertEquals(Prefs.EDGE_BLUR_MAX, Prefs.edgeBlurWidth(c));
+        Prefs.setColorAS(c, -0.2f);
+        assertEquals(0f, Prefs.colorAS(c), 0f);
+        Prefs.setColorAV(c, 1.5f);
+        assertEquals(1f, Prefs.colorAV(c), 0f);
+        Prefs.setStartHue(c, 400f);
+        assertEquals(40f, Prefs.startHue(c), 0f);
+        Prefs.setColorAH(c, -30f);
+        assertEquals(330f, Prefs.colorAH(c), 0f);
         Prefs.sp(c).edit().putInt(Prefs.SPEED, -3)
                 .putInt(Prefs.WIDTH_A, 0).putInt(Prefs.WIDTH_B, 0)
                 .putFloat(Prefs.BRIGHT, 9f).commit();

@@ -22,10 +22,17 @@ final class HueDrift {
 
     /** Unwrapped hue in degrees at time {@code t} seconds. */
     static float hueDeg(float t, long seed, float rateDegPerSec) {
-        float h0 = startHue(seed);
-        if (rateDegPerSec <= 0f) return h0;
+        return hueDeg(t, seed, rateDegPerSec, startHue(seed));
+    }
+
+    /**
+     * Same as {@link #hueDeg(float, long, float)}, but the starting hue is
+     * supplied by the caller instead of being taken from the seed.
+     */
+    static float hueDeg(float t, long seed, float rateDegPerSec, float startHueDeg) {
+        if (rateDegPerSec <= 0f) return startHueDeg;
         if (t < 0f) t = 0f;
         float wobble = WOBBLE_DEG * SlowNoise.wave(t, seed, T, A, TAG_W);
-        return h0 + rateDegPerSec * t + wobble;
+        return startHueDeg + rateDegPerSec * t + wobble;
     }
 }

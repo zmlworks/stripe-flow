@@ -3,6 +3,7 @@ package com.zmlworks.stripeflow;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -18,10 +19,11 @@ import java.util.Locale;
 
 /** Launch screen: remember settings, then open the full-screen stripes. */
 public final class SettingsActivity extends Activity {
-    private TextView speedValue, widthAValue, widthBValue, brightValue, rotSpeedValue, autoHint, distValue, hueRateValue, edgeBlurValue;
-    private SeekBar speedBar, widthABar, widthBBar, brightBar, rotSpeedBar, distBar, hueRateBar, edgeBlurBar;
-    private CheckBox systemBright, rotate, wander, autoDrift, antiAlias, edgeBlur;
-    private LinearLayout rotPanel, manualPanel, autoPanel, colorPanel, edgeBlurPanel;
+    private TextView speedValue, widthAValue, widthBValue, brightValue, rotSpeedValue, autoHint, distValue, hueRateValue, edgeBlurValue, startHueValue;
+    private SeekBar speedBar, widthABar, widthBBar, brightBar, rotSpeedBar, distBar, hueRateBar, edgeBlurBar, startHueBar;
+    private CheckBox systemBright, rotate, wander, autoDrift, antiAlias, edgeBlur, startHueSet;
+    private LinearLayout rotPanel, manualPanel, autoPanel, colorPanel, edgeBlurPanel, autoColorPanel, specColorPanel, startHuePanel;
+    private View colorASwatch, colorBSwatch;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -173,11 +175,47 @@ public final class SettingsActivity extends Activity {
                 }));
         colorPanel = new LinearLayout(this);
         colorPanel.setOrientation(LinearLayout.VERTICAL);
-        heading(colorPanel, R.string.hue_rate);
+        heading(colorPanel, R.string.color_how);
+        colorPanel.addView(radios(
+                new String[]{getString(R.string.color_auto), getString(R.string.color_specified)},
+                new int[]{0, 1},
+                Prefs.colorSpecified(this) ? 1 : 0,
+                v -> {
+                    Prefs.setColorSpecified(this, v == 1);
+                    refreshColorStyle();
+                }));
+
+        autoColorPanel = new LinearLayout(this);
+        autoColorPanel.setOrientation(LinearLayout.VERTICAL);
+        startHueSet = new CheckBox(this);
+        startHueSet.setText(R.string.hue_start_set);
+        startHueSet.setTextColor(Ui.TEXT);
+        startHueSet.setChecked(Prefs.startHueSet(this));
+        autoColorPanel.addView(startHueSet);
+        startHuePanel = new LinearLayout(this);
+        startHuePanel.setOrientation(LinearLayout.VERTICAL);
+        heading(startHuePanel, R.string.hue);
+        startHueValue = text("", 14, Ui.DIM);
+        startHuePanel.addView(startHueValue);
+        startHueBar = seek(360, hueProgress(Prefs.startHue(this)));
+        startHuePanel.addView(startHueBar, lp());
+        startHueBar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                if (fromUser) Prefs.setStartHue(SettingsActivity.this, p);
+                startHueValue.setText(getString(R.string.hue_value, p == 360 ? 0 : p));
+            }
+        });
+        startHueValue.setText(getString(R.string.hue_value, hueProgress(Prefs.startHue(this))));
+        autoColorPanel.addView(startHuePanel, lp());
+        startHueSet.setOnCheckedChangeListener((v, on) -> {
+            Prefs.setStartHueSet(this, on);
+            refreshStartHue();
+        });
+        heading(autoColorPanel, R.string.hue_rate);
         hueRateValue = text("", 14, Ui.DIM);
-        colorPanel.addView(hueRateValue);
+        autoColorPanel.addView(hueRateValue);
         hueRateBar = seek(Scales.STEPS, Scales.progressFromHueRate(Prefs.hueRate(this)));
-        colorPanel.addView(hueRateBar, lp());
+        autoColorPanel.addView(hueRateBar, lp());
         hueRateBar.setOnSeekBarChangeListener(new SimpleSeek() {
             @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
                 float v = Scales.hueRateFromProgress(p);
@@ -186,6 +224,19 @@ public final class SettingsActivity extends Activity {
             }
         });
         hueRateValue.setText(hueRateLabel(Prefs.hueRate(this)));
+        colorPanel.addView(autoColorPanel, lp());
+
+        specColorPanel = new LinearLayout(this);
+        specColorPanel.setOrientation(LinearLayout.VERTICAL);
+        colorASwatch = headingWithSwatch(specColorPanel, R.string.color_a, Prefs.colorA(this));
+        addHueBar(specColorPanel, Prefs.colorAH(this), v -> Prefs.setColorAH(this, v));
+        addSatValBar(specColorPanel, R.string.saturation, Prefs.colorAS(this), v -> Prefs.setColorAS(this, v));
+        addSatValBar(specColorPanel, R.string.value_bright, Prefs.colorAV(this), v -> Prefs.setColorAV(this, v));
+        colorBSwatch = headingWithSwatch(specColorPanel, R.string.color_b, Prefs.colorB(this));
+        addHueBar(specColorPanel, Prefs.colorBH(this), v -> Prefs.setColorBH(this, v));
+        addSatValBar(specColorPanel, R.string.saturation, Prefs.colorBS(this), v -> Prefs.setColorBS(this, v));
+        addSatValBar(specColorPanel, R.string.value_bright, Prefs.colorBV(this), v -> Prefs.setColorBV(this, v));
+        colorPanel.addView(specColorPanel, lp());
         col.addView(colorPanel, lp());
 
         manualPanel = new LinearLayout(this);
@@ -312,6 +363,25 @@ public final class SettingsActivity extends Activity {
     private void refreshColor() {
         boolean on = Prefs.colorScheme(this) == Prefs.COLOR_MODE;
         colorPanel.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (on) refreshColorStyle();
+    }
+
+    private void refreshColorStyle() {
+        boolean spec = Prefs.colorSpecified(this);
+        autoColorPanel.setVisibility(spec ? View.GONE : View.VISIBLE);
+        specColorPanel.setVisibility(spec ? View.VISIBLE : View.GONE);
+        if (spec) refreshSpecSwatches();
+        else refreshStartHue();
+    }
+
+    private void refreshStartHue() {
+        boolean on = Prefs.startHueSet(this);
+        startHuePanel.setVisibility(on ? View.VISIBLE : View.GONE);
+    }
+
+    private void refreshSpecSwatches() {
+        colorASwatch.setBackgroundColor(Prefs.colorA(this));
+        colorBSwatch.setBackgroundColor(Prefs.colorB(this));
     }
 
     private void refreshEdgeBlur() {
@@ -368,6 +438,61 @@ public final class SettingsActivity extends Activity {
         t.setTextSize(size);
         t.setTextColor(color);
         return t;
+    }
+
+    private static int hueProgress(float hue) {
+        int p = Math.round(StripePattern.wrapHue(hue));
+        return p == 360 ? 0 : p;
+    }
+
+    private interface FloatChoice { void pick(float v); }
+
+    private void addHueBar(LinearLayout col, float current, FloatChoice onPick) {
+        heading(col, R.string.hue);
+        TextView value = text(getString(R.string.hue_value, hueProgress(current)), 14, Ui.DIM);
+        col.addView(value);
+        SeekBar bar = seek(360, hueProgress(current));
+        col.addView(bar, lp());
+        bar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                int deg = p == 360 ? 0 : p;
+                if (fromUser) onPick.pick(deg);
+                value.setText(getString(R.string.hue_value, deg));
+                refreshSpecSwatches();
+            }
+        });
+    }
+
+    private void addSatValBar(LinearLayout col, int label, float current, FloatChoice onPick) {
+        heading(col, label);
+        int pct = Math.round(Prefs.clampF(current, 0f, 1f) * 100f);
+        TextView value = text(getString(R.string.percent_value, pct), 14, Ui.DIM);
+        col.addView(value);
+        SeekBar bar = seek(100, pct);
+        col.addView(bar, lp());
+        bar.setOnSeekBarChangeListener(new SimpleSeek() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                if (fromUser) onPick.pick(p / 100f);
+                value.setText(getString(R.string.percent_value, p));
+                refreshSpecSwatches();
+            }
+        });
+    }
+
+    private View headingWithSwatch(LinearLayout col, int res, int color) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, Ui.dp(this, 16), 0, Ui.dp(this, 4));
+        TextView t = text(getString(res), 14, Ui.HI);
+        LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        row.addView(t, tp);
+        View sw = new View(this);
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(Ui.dp(this, 48), Ui.dp(this, 24));
+        sw.setBackgroundColor(color);
+        row.addView(sw, sp);
+        col.addView(row, lp());
+        return sw;
     }
 
     private void heading(LinearLayout col, int res) {

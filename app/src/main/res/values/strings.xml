@@ -29,6 +29,17 @@
     <string name="color">色</string>
     <string name="color_bw">白黒</string>
     <string name="color_mode">色モード</string>
+    <string name="color_how">色の決め方</string>
+    <string name="color_auto">自動</string>
+    <string name="color_specified">指定</string>
+    <string name="hue_start_set">開始の色相を指定</string>
+    <string name="hue">色相</string>
+    <string name="hue_value">%d°</string>
+    <string name="saturation">彩度</string>
+    <string name="value_bright">明度</string>
+    <string name="percent_value">%d%%</string>
+    <string name="color_a">色 A</string>
+    <string name="color_b">色 B</string>
     <string name="dist_scale">変化の大きさ</string>
     <string name="dist_scale_value">%s×</string>
     <string name="hue_rate">色の変化の速さ</string>
@@ -41,5 +52,5 @@
     <string name="edge_blur_width">ぼかしの幅</string>
     <string name="edge_blur_value">%d px</string>
     <string name="start">開始</string>
-    <string name="touch_hint">全画面表示中に画面をタッチすると、いったん真っ暗になります。もう一度タッチすると縞に戻り、戻る操作でこの設定に戻ります</string>
+    <string name="touch_hint">全画面表示中に画面をタッチすると、いったん真っ暗になります。もう一度タッチするか、戻る操作でこの設定に戻ります</string>
 </resources>

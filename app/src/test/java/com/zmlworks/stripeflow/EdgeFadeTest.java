@@ -74,4 +74,37 @@ public class EdgeFadeTest {
         int edge = bmp.getPixel(s / 2, 0);
         assertTrue(Math.abs(((mix >> 16) & 0xff) - ((edge >> 16) & 0xff)) <= 8);
     }
+
+    @Test public void overlayUsesEdgeTilesInsteadOfAFullScreenMask() {
+        int w = 800, h = 1200, r = 40, blur = 64;
+        EdgeFade fade = new EdgeFade();
+        fade.ensure(w, h, blur, r, r, r, r);
+        fade.setColor(0xFFBCBCBC);
+        int tex = fade.overlayTexels();
+        assertTrue("overlay texels " + tex + " should be far below " + (w * h),
+                tex > 0 && tex < w * h / 4);
+        // Four corners of size (r+blur)^2 plus two 1-wide ramps.
+        int corner = (r + blur) * (r + blur) * 4;
+        assertTrue("texels " + tex + " vs corners " + corner, tex <= corner + 2 * blur + 8);
+    }
+
+    @Test public void centreOfAWhiteFieldStaysWhiteWhenTheVignetteIsDrawn() {
+        int s = 200, blur = 40, r = 24;
+        Bitmap bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888);
+        bmp.eraseColor(Color.BLACK);
+        // Paint a white interior, then overlay the fade; the centre must stay black
+        // if we start from black, and white if we start from white.
+        EdgeFade fade = new EdgeFade();
+        fade.ensure(s, s, blur, r, r, r, r);
+        fade.setColor(0xFFBCBCBC);
+        bmp.eraseColor(Color.WHITE);
+        fade.draw(new Canvas(bmp));
+        assertEquals(Color.WHITE, bmp.getPixel(s / 2, s / 2));
+        assertEquals(Color.WHITE, bmp.getPixel(s / 2, blur + 2));
+        assertEquals(Color.WHITE, bmp.getPixel(blur + 2, s / 2));
+        bmp.eraseColor(Color.BLACK);
+        fade.draw(new Canvas(bmp));
+        assertEquals(Color.BLACK, bmp.getPixel(s / 2, s / 2));
+        assertEquals(Color.BLACK, bmp.getPixel(s / 2, blur + 2));
+    }
 }

@@ -24,6 +24,15 @@ final class Prefs {
     static final String COLOR = "color_scheme";
     static final String DIST = "dist_scale";
     static final String HUE_RATE = "hue_rate_deg_s";
+    static final String COLOR_SPECIFIED = "color_specified";
+    static final String HUE_START_SET = "hue_start_set";
+    static final String HUE_START = "hue_start_deg";
+    static final String COLOR_A_H = "color_a_h";
+    static final String COLOR_A_S = "color_a_s";
+    static final String COLOR_A_V = "color_a_v";
+    static final String COLOR_B_H = "color_b_h";
+    static final String COLOR_B_S = "color_b_s";
+    static final String COLOR_B_V = "color_b_v";
     static final String AA = "anti_alias";
     static final String EDGE_BLUR = "edge_blur";
     static final String EDGE_BLUR_WIDTH = "edge_blur_width_px";
@@ -35,6 +44,9 @@ final class Prefs {
     static final int COLOR_BW = StripePattern.SCHEME_BW, COLOR_MODE = StripePattern.SCHEME_COLOR, COLOR_DEFAULT = COLOR_BW;
     static final float DIST_MIN = 0.1f, DIST_MAX = 5f, DIST_DEFAULT = 1f;
     static final float HUE_RATE_MIN = HueDrift.RATE_MIN, HUE_RATE_MAX = HueDrift.RATE_MAX, HUE_RATE_DEFAULT = HueDrift.RATE_DEFAULT;
+    static final float HUE_START_DEFAULT = 0f;
+    static final float COLOR_A_H_DEFAULT = 120f, COLOR_B_H_DEFAULT = 300f;
+    static final float COLOR_SV_DEFAULT = 1f;
     static final float BRIGHT_DEFAULT = 1f;
     static final float ROT_MIN = 0f, ROT_MAX = 90f, ROT_DEFAULT = 0.5f;
     /** +1 = clockwise on screen (y down), -1 = counterclockwise. */
@@ -185,6 +197,58 @@ final class Prefs {
 
     static void setHueRate(Context c, float v) {
         sp(c).edit().putFloat(HUE_RATE, clampF(v, HUE_RATE_MIN, HUE_RATE_MAX)).apply();
+    }
+
+    /** When true, colour mode uses the two specified HSV colours and does not drift. */
+    static boolean colorSpecified(Context c) {
+        return sp(c).getBoolean(COLOR_SPECIFIED, false);
+    }
+
+    static void setColorSpecified(Context c, boolean v) {
+        sp(c).edit().putBoolean(COLOR_SPECIFIED, v).apply();
+    }
+
+    /** When true, auto colour mode starts from {@link #startHue} instead of a random seed. */
+    static boolean startHueSet(Context c) {
+        return sp(c).getBoolean(HUE_START_SET, false);
+    }
+
+    static void setStartHueSet(Context c, boolean v) {
+        sp(c).edit().putBoolean(HUE_START_SET, v).apply();
+    }
+
+    static float startHue(Context c) {
+        return wrapHue(sp(c).getFloat(HUE_START, HUE_START_DEFAULT));
+    }
+
+    static void setStartHue(Context c, float v) {
+        sp(c).edit().putFloat(HUE_START, wrapHue(v)).apply();
+    }
+
+    static float colorAH(Context c) { return wrapHue(sp(c).getFloat(COLOR_A_H, COLOR_A_H_DEFAULT)); }
+    static float colorAS(Context c) { return clampF(sp(c).getFloat(COLOR_A_S, COLOR_SV_DEFAULT), 0f, 1f); }
+    static float colorAV(Context c) { return clampF(sp(c).getFloat(COLOR_A_V, COLOR_SV_DEFAULT), 0f, 1f); }
+    static float colorBH(Context c) { return wrapHue(sp(c).getFloat(COLOR_B_H, COLOR_B_H_DEFAULT)); }
+    static float colorBS(Context c) { return clampF(sp(c).getFloat(COLOR_B_S, COLOR_SV_DEFAULT), 0f, 1f); }
+    static float colorBV(Context c) { return clampF(sp(c).getFloat(COLOR_B_V, COLOR_SV_DEFAULT), 0f, 1f); }
+
+    static void setColorAH(Context c, float v) { sp(c).edit().putFloat(COLOR_A_H, wrapHue(v)).apply(); }
+    static void setColorAS(Context c, float v) { sp(c).edit().putFloat(COLOR_A_S, clampF(v, 0f, 1f)).apply(); }
+    static void setColorAV(Context c, float v) { sp(c).edit().putFloat(COLOR_A_V, clampF(v, 0f, 1f)).apply(); }
+    static void setColorBH(Context c, float v) { sp(c).edit().putFloat(COLOR_B_H, wrapHue(v)).apply(); }
+    static void setColorBS(Context c, float v) { sp(c).edit().putFloat(COLOR_B_S, clampF(v, 0f, 1f)).apply(); }
+    static void setColorBV(Context c, float v) { sp(c).edit().putFloat(COLOR_B_V, clampF(v, 0f, 1f)).apply(); }
+
+    static int colorA(Context c) {
+        return StripePattern.colorAtHsv(colorAH(c), colorAS(c), colorAV(c));
+    }
+
+    static int colorB(Context c) {
+        return StripePattern.colorAtHsv(colorBH(c), colorBS(c), colorBV(c));
+    }
+
+    static float wrapHue(float hueDeg) {
+        return StripePattern.wrapHue(hueDeg);
     }
 
     static boolean antiAlias(Context c) {

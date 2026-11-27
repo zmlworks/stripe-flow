@@ -329,4 +329,11 @@ public class StripePatternTest {
         assertEquals(0f, StripePattern.hueDelta(0f, 360f), 1e-5f);
     }
 
+
+    @Test public void colorAtHsvYieldsGreenAndMagenta() {
+        assertEquals(0xFF00FF00, StripePattern.colorAtHsv(120f, 1f, 1f));
+        assertEquals(0xFFFF00FF, StripePattern.colorAtHsv(300f, 1f, 1f));
+        assertEquals(0xFF000000, StripePattern.colorAtHsv(0f, 0f, 0f));
+        assertEquals(0xFFFFFFFF, StripePattern.colorAtHsv(0f, 0f, 1f));
+    }
 }

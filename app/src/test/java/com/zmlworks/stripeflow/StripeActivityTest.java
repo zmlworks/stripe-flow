@@ -40,18 +40,17 @@ public class StripeActivityTest {
         assertFalse(sv.running());
     }
 
-    @Test public void secondTapResumesStripesAndRestoresKeepScreenOn() {
+    @Test public void secondTapFromBlackoutReturnsToSettings() {
         ActivityController<StripeActivity> c = Robolectric.buildActivity(StripeActivity.class).setup();
         StripeActivity a = c.get();
         a.dispatchTouchEvent(down(12f, 20f));
         assertTrue(a.blackout());
         a.dispatchTouchEvent(down(40f, 40f));
-        assertFalse(a.isFinishing());
-        assertFalse(a.blackout());
-        assertTrue(keepScreenOn(a));
+        assertTrue(a.isFinishing());
+        assertTrue(a.blackout());
         StripeView sv = contentView(a);
-        assertFalse(sv.blackout());
-        assertTrue(sv.running());
+        assertTrue(sv.blackout());
+        assertFalse(sv.running());
     }
 
     @Test public void backFromBlackoutReturnsToSettings() {
@@ -99,8 +98,6 @@ public class StripeActivityTest {
         a.dispatchTouchEvent(down(1f, 1f));
         assertEquals(WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE,
                 a.getWindow().getAttributes().screenBrightness, 0f);
-        a.dispatchTouchEvent(down(1f, 1f));
-        assertEquals(0.25f, a.getWindow().getAttributes().screenBrightness, 0.0001f);
         c.pause().destroy();
 
         Prefs.setUseSystemBrightness(app, true);

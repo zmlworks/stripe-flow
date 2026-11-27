@@ -3,20 +3,27 @@ package com.zmlworks.stripeflow;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Paint;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
+import android.graphics.Rect;
 
 /**
  * A soft fade from the stripe field to the perceived average colour, following
- * the rounded corners of the display. The mask (alpha only) is rebuilt when
- * the size, blur width or corner radii change. Recolouring is a color filter,
- * so a drifting hue can update the overlay without touching the mask.
+ * the rounded corners of the display. Only the four edge bands and four
+ * corner tiles are drawn; the centre is left untouched, so a colour filter
+ * cannot tint the stripes. The alpha tiles are rebuilt when the size, blur
+ * width or corner radii change. Recolouring is {@link Paint#setColor}.
  */
 final class EdgeFade {
     private int width, height, blur, rtl, rtr, rbr, rbl;
     private int color = 0;
     private final Paint paint = new Paint(0);
-    private Bitmap mask;
+    private final Rect srcV = new Rect();
+    private final Rect srcH = new Rect();
+    private final Rect dst = new Rect();
+    /** 1 x blur, y = 0 is the outer (opaque) end. */
+    private Bitmap vRamp;
+    /** blur x 1, x = 0 is the outer (opaque) end. */
+    private Bitmap hRamp;
+    private Bitmap tl, tr, br, bl;
 
     EdgeFade() {
         paint.setDither(false);
@@ -64,6 +71,23 @@ final class EdgeFade {
         return 1f - s;
     }
 
+    /**
+     * Alpha in a top-left corner tile of size {@code radius + blur}. The tile
+     * covers the rounded pocket and the adjoining straight-edge fade so the
+     * side bands can start after {@code radius + blur} without a gap.
+     */
+    static float cornerAlpha(float x, float y, int radius, float blur) {
+        if (blur <= 0f) return 0f;
+        float d;
+        if (radius > 0 && x < radius && y < radius) {
+            d = radius - (float) Math.hypot(radius - x, radius - y);
+        } else {
+            d = Math.min(x, y);
+        }
+        if (d <= 0f) return 1f;
+        return alphaAtDist(d, blur);
+    }
+
     static int clampBlur(int blur, int width, int height) {
         if (blur <= 0 || width <= 0 || height <= 0) return 0;
         return Math.min(blur, Math.min(width, height) / 2);
@@ -76,63 +100,159 @@ final class EdgeFade {
 
     void ensure(int width, int height, int blur, int rtl, int rtr, int rbr, int rbl) {
         int b = clampBlur(blur, width, height);
-        int tl = clampCorner(rtl, width, height);
-        int tr = clampCorner(rtr, width, height);
-        int br = clampCorner(rbr, width, height);
-        int bl = clampCorner(rbl, width, height);
+        int ctl = clampCorner(rtl, width, height);
+        int ctr = clampCorner(rtr, width, height);
+        int cbr = clampCorner(rbr, width, height);
+        int cbl = clampCorner(rbl, width, height);
         if (this.width == width && this.height == height && this.blur == b
-                && this.rtl == tl && this.rtr == tr && this.rbr == br && this.rbl == bl
-                && mask != null) {
+                && this.rtl == ctl && this.rtr == ctr && this.rbr == cbr && this.rbl == cbl
+                && vRamp != null) {
             return;
         }
         this.width = width;
         this.height = height;
         this.blur = b;
-        this.rtl = tl;
-        this.rtr = tr;
-        this.rbr = br;
-        this.rbl = bl;
-        if (mask != null) {
-            mask.recycle();
-            mask = null;
-        }
+        this.rtl = ctl;
+        this.rtr = ctr;
+        this.rbr = cbr;
+        this.rbl = cbl;
+        recycleTiles();
         if (b <= 0 || width <= 0 || height <= 0) return;
-        mask = makeMask(width, height, b, tl, tr, br, bl);
+        vRamp = makeVRamp(b);
+        hRamp = makeHRamp(b);
+        tl = makeCorner(ctl, b);
+        tr = makeCorner(ctr, b);
+        br = makeCorner(cbr, b);
+        bl = makeCorner(cbl, b);
     }
 
-    static Bitmap makeMask(int width, int height, int blur, int rtl, int rtr, int rbr, int rbl) {
-        Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+    private void recycleTiles() {
+        vRamp = recycle(vRamp);
+        hRamp = recycle(hRamp);
+        tl = recycle(tl);
+        tr = recycle(tr);
+        br = recycle(br);
+        bl = recycle(bl);
+    }
+
+    private static Bitmap recycle(Bitmap b) {
+        if (b != null) b.recycle();
+        return null;
+    }
+
+    static Bitmap makeVRamp(int blur) {
+        Bitmap bmp = Bitmap.createBitmap(1, blur, Bitmap.Config.ALPHA_8);
         bmp.setDensity(Bitmap.DENSITY_NONE);
-        int[] px = new int[width];
-        for (int y = 0; y < height; y++) {
-            boolean any = false;
-            for (int x = 0; x < width; x++) {
-                float a = alpha(x + 0.5f, y + 0.5f, width, height, blur, rtl, rtr, rbr, rbl);
-                if (a <= 0f) {
-                    px[x] = 0;
-                } else {
-                    any = true;
-                    int ai = Math.round(a * 255f);
-                    px[x] = (ai << 24) | 0x00FFFFFF;
-                }
+        for (int y = 0; y < blur; y++) {
+            float a = alphaAtDist(y + 0.5f, blur);
+            bmp.setPixel(0, y, Math.round(a * 255f) << 24);
+        }
+        return bmp;
+    }
+
+    static Bitmap makeHRamp(int blur) {
+        Bitmap bmp = Bitmap.createBitmap(blur, 1, Bitmap.Config.ALPHA_8);
+        bmp.setDensity(Bitmap.DENSITY_NONE);
+        for (int x = 0; x < blur; x++) {
+            float a = alphaAtDist(x + 0.5f, blur);
+            bmp.setPixel(x, 0, Math.round(a * 255f) << 24);
+        }
+        return bmp;
+    }
+
+    static Bitmap makeCorner(int radius, int blur) {
+        int s = radius + blur;
+        if (s <= 0) return null;
+        Bitmap bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ALPHA_8);
+        bmp.setDensity(Bitmap.DENSITY_NONE);
+        int[] px = new int[s];
+        for (int y = 0; y < s; y++) {
+            for (int x = 0; x < s; x++) {
+                float a = cornerAlpha(x + 0.5f, y + 0.5f, radius, blur);
+                px[x] = Math.round(a * 255f) << 24;
             }
-            if (any || y == 0) bmp.setPixels(px, 0, width, 0, y, width, 1);
+            bmp.setPixels(px, 0, s, 0, y, s, 1);
         }
         return bmp;
     }
 
     void setColor(int rgb) {
         int c = 0xFF000000 | rgb;
-        if (c == color && paint.getColorFilter() != null) return;
+        if (c == color && paint.getColor() == c && paint.getColorFilter() == null) return;
         color = c;
-        paint.setColorFilter(new PorterDuffColorFilter(c, PorterDuff.Mode.SRC_IN));
+        paint.setColorFilter(null);
+        paint.setColor(c);
     }
 
     int color() { return color; }
 
+    /** Texels in the edge tiles (for tests). Much smaller than a full-screen mask. */
+    int overlayTexels() {
+        int n = 0;
+        if (vRamp != null) n += vRamp.getWidth() * vRamp.getHeight();
+        if (hRamp != null) n += hRamp.getWidth() * hRamp.getHeight();
+        if (tl != null) n += tl.getWidth() * tl.getHeight();
+        if (tr != null) n += tr.getWidth() * tr.getHeight();
+        if (br != null) n += br.getWidth() * br.getHeight();
+        if (bl != null) n += bl.getWidth() * bl.getHeight();
+        return n;
+    }
+
     void draw(Canvas c) {
-        if (mask == null) return;
-        if (paint.getColorFilter() == null) setColor(color == 0 ? 0xFFBCBCBC : color);
-        c.drawBitmap(mask, 0, 0, paint);
+        if (vRamp == null || hRamp == null || blur <= 0) return;
+        if (paint.getColorFilter() != null || color == 0 || paint.getColor() != color) {
+            setColor(color == 0 ? 0xFFBCBCBC : color);
+        }
+        int b = blur;
+        int midX = width / 2;
+        int midY = height / 2;
+
+        int topL = rtl + b, topR = width - rtr - b;
+        if (topR > topL) {
+            srcV.set(0, 0, 1, b);
+            dst.set(topL, 0, topR, b);
+            c.drawBitmap(vRamp, srcV, dst, paint);
+        }
+        int botL = rbl + b, botR = width - rbr - b;
+        if (botR > botL) {
+            c.save();
+            c.translate(0, height);
+            c.scale(1f, -1f);
+            srcV.set(0, 0, 1, b);
+            dst.set(botL, 0, botR, b);
+            c.drawBitmap(vRamp, srcV, dst, paint);
+            c.restore();
+        }
+        int leftT = rtl + b, leftB = height - rbl - b;
+        if (leftB > leftT) {
+            srcH.set(0, 0, b, 1);
+            dst.set(0, leftT, b, leftB);
+            c.drawBitmap(hRamp, srcH, dst, paint);
+        }
+        int rightT = rtr + b, rightB = height - rbr - b;
+        if (rightB > rightT) {
+            c.save();
+            c.translate(width, 0);
+            c.scale(-1f, 1f);
+            srcH.set(0, 0, b, 1);
+            dst.set(0, rightT, b, rightB);
+            c.drawBitmap(hRamp, srcH, dst, paint);
+            c.restore();
+        }
+        drawCorner(c, tl, 0, 0, 1, 1, 0, 0, midX, midY);
+        drawCorner(c, tr, width, 0, -1, 1, midX, 0, width, midY);
+        drawCorner(c, br, width, height, -1, -1, midX, midY, width, height);
+        drawCorner(c, bl, 0, height, 1, -1, 0, midY, midX, height);
+    }
+
+    private void drawCorner(Canvas c, Bitmap tile, int ox, int oy, int sx, int sy,
+                            int clipL, int clipT, int clipR, int clipB) {
+        if (tile == null) return;
+        c.save();
+        c.clipRect(clipL, clipT, clipR, clipB);
+        c.translate(ox, oy);
+        c.scale(sx, sy);
+        c.drawBitmap(tile, 0, 0, paint);
+        c.restore();
     }
 }

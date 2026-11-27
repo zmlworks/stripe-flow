@@ -18,7 +18,7 @@ import android.view.WindowInsets;
  * whose local matrix encodes the current angle, pivot and flow offset.
  * One shader texel is one device pixel along the normal. When anti-aliasing
  * is on, the tile stores a 1 px prefiltered ramp and is sampled bilinearly.
- * An optional edge fade draws a once-built vignette over the four sides.
+ * An optional edge fade draws only the edge bands and corners.
  */
 public final class StripeView extends View implements Choreographer.FrameCallback {
     private final Paint paint = new Paint(0);
@@ -39,6 +39,12 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     private int colorScheme = StripePattern.SCHEME_BW;
     private float distScale = Prefs.DIST_DEFAULT;
     private float hueRate = Prefs.HUE_RATE_DEFAULT;
+    private boolean colorSpecified;
+    private boolean startHueSet;
+    private float startHue = Prefs.HUE_START_DEFAULT;
+    private float colorAH = Prefs.COLOR_A_H_DEFAULT, colorAS = Prefs.COLOR_SV_DEFAULT, colorAV = Prefs.COLOR_SV_DEFAULT;
+    private float colorBH = Prefs.COLOR_B_H_DEFAULT, colorBS = Prefs.COLOR_SV_DEFAULT, colorBV = Prefs.COLOR_SV_DEFAULT;
+    private int lastSpecifiedA, lastSpecifiedB;
     private boolean antiAlias;
     private int edgeBlurPx;
     private final EdgeFade edgeFade = new EdgeFade();
@@ -85,6 +91,9 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
                     Prefs.colorScheme(c), Prefs.DIST_DEFAULT, Prefs.hueRate(c),
                     Prefs.antiAlias(c), fade);
         }
+        applyColorStyle(Prefs.colorSpecified(c), Prefs.startHueSet(c), Prefs.startHue(c),
+                Prefs.colorAH(c), Prefs.colorAS(c), Prefs.colorAV(c),
+                Prefs.colorBH(c), Prefs.colorBS(c), Prefs.colorBV(c));
     }
 
     void configure(int widthA, int widthB, float speedPxPerSec, int direction,
@@ -112,6 +121,17 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
                 ? StripePattern.SCHEME_COLOR : StripePattern.SCHEME_BW;
         this.distScale = Prefs.clampF(distScale, Prefs.DIST_MIN, Prefs.DIST_MAX);
         this.hueRate = Prefs.clampF(hueRate, Prefs.HUE_RATE_MIN, Prefs.HUE_RATE_MAX);
+        this.colorSpecified = false;
+        this.startHueSet = false;
+        this.startHue = Prefs.HUE_START_DEFAULT;
+        this.colorAH = Prefs.COLOR_A_H_DEFAULT;
+        this.colorAS = Prefs.COLOR_SV_DEFAULT;
+        this.colorAV = Prefs.COLOR_SV_DEFAULT;
+        this.colorBH = Prefs.COLOR_B_H_DEFAULT;
+        this.colorBS = Prefs.COLOR_SV_DEFAULT;
+        this.colorBV = Prefs.COLOR_SV_DEFAULT;
+        this.lastSpecifiedA = 0;
+        this.lastSpecifiedB = 0;
         this.widthA = Prefs.clamp(widthA, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
         this.widthB = Prefs.clamp(widthB, Prefs.WIDTH_MIN, Prefs.WIDTH_MAX);
         this.antiAlias = antiAlias;
@@ -218,9 +238,54 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     int fadeColor() { return edgeFade.color(); }
     int cornerTl() { return cornerTl; }
 
+    /**
+     * Colour-mode style: specified A/B (no drift), or auto complementary
+     * pair with an optional fixed starting hue.
+     */
+    void applyColorStyle(boolean specified, boolean startHueSet, float startHue,
+                         float aH, float aS, float aV, float bH, float bS, float bV) {
+        this.colorSpecified = specified;
+        this.startHueSet = startHueSet;
+        this.startHue = StripePattern.wrapHue(startHue);
+        this.colorAH = StripePattern.wrapHue(aH);
+        this.colorAS = Prefs.clampF(aS, 0f, 1f);
+        this.colorAV = Prefs.clampF(aV, 0f, 1f);
+        this.colorBH = StripePattern.wrapHue(bH);
+        this.colorBS = Prefs.clampF(bS, 0f, 1f);
+        this.colorBV = Prefs.clampF(bV, 0f, 1f);
+        lastHue = Float.NaN;
+        lastFadeHue = Float.NaN;
+        lastSpecifiedA = 0;
+        lastSpecifiedB = 0;
+        applyHueAt(0f);
+        if (colorScheme != StripePattern.SCHEME_COLOR) syncEdgeFadeColor(0f, true);
+        else if (colorSpecified) applySpecifiedColors(true);
+        invalidate();
+    }
+
     private void applyHueAt(float t) {
         if (colorScheme != StripePattern.SCHEME_COLOR) return;
-        applyHue(HueDrift.hueDeg(t, wanderSeed, hueRate));
+        if (colorSpecified) {
+            applySpecifiedColors(false);
+            return;
+        }
+        float h0 = startHueSet ? startHue : HueDrift.startHue(wanderSeed);
+        applyHue(HueDrift.hueDeg(t, wanderSeed, hueRate, h0));
+    }
+
+    private void applySpecifiedColors(boolean force) {
+        if (maskPx == null || tile == null) return;
+        int c0 = StripePattern.colorAtHsv(colorAH, colorAS, colorAV, hsv);
+        int c1 = StripePattern.colorAtHsv(colorBH, colorBS, colorBV, hsv);
+        if (!force && lastSpecifiedA == c0 && lastSpecifiedB == c1 && !Float.isNaN(lastHue)) return;
+        lastSpecifiedA = c0;
+        lastSpecifiedB = c1;
+        lastHue = 0f;
+        for (int i = 0; i < maskPx.length; i++) {
+            colorPx[i] = StripePattern.mixColors(c1, c0, maskPx[i]);
+        }
+        tile.setPixels(colorPx, 0, tile.getWidth(), 0, 0, tile.getWidth(), tile.getHeight());
+        syncEdgeFadeColor(0f, true);
     }
 
     /** Recolour the existing tile in place. No allocation after the first configure. */
@@ -324,13 +389,18 @@ public final class StripeView extends View implements Choreographer.FrameCallbac
     private void syncEdgeFadeColor(float hueDeg, boolean force) {
         int colA, colB;
         if (colorScheme == StripePattern.SCHEME_COLOR) {
-            if (!force && !Float.isNaN(lastFadeHue)
-                    && StripePattern.hueDelta(lastFadeHue, hueDeg) < 1f) {
-                return;
+            if (colorSpecified) {
+                colA = StripePattern.colorAtHsv(colorAH, colorAS, colorAV, hsv);
+                colB = StripePattern.colorAtHsv(colorBH, colorBS, colorBV, hsv);
+            } else {
+                if (!force && !Float.isNaN(lastFadeHue)
+                        && StripePattern.hueDelta(lastFadeHue, hueDeg) < 1f) {
+                    return;
+                }
+                lastFadeHue = hueDeg;
+                colA = StripePattern.colorAtHue(hueDeg, hsv);
+                colB = StripePattern.colorAtHue(hueDeg + 180f, hsv);
             }
-            lastFadeHue = hueDeg;
-            colA = StripePattern.colorAtHue(hueDeg, hsv);
-            colB = StripePattern.colorAtHue(hueDeg + 180f, hsv);
         } else {
             colA = StripePattern.WHITE;
             colB = StripePattern.BLACK;
